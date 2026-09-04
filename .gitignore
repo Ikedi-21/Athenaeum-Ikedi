@@ -1,0 +1,53 @@
+# --- Python bytecode and build artefacts ------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+
+# --- Virtual environments --------------------------------------------
+# .venv already excludes itself, but these cover the other names
+# someone cloning this repo might use.
+.venv/
+venv/
+env/
+
+# --- Secrets ---------------------------------------------------------
+# Real credentials never enter the repo. .env.example is committed in
+# their place so anyone cloning knows which keys to supply.
+.env
+.env.*
+!.env.example
+
+# --- Django runtime --------------------------------------------------
+db.sqlite3
+db.sqlite3-journal
+*.log
+
+# --- Uploaded files --------------------------------------------------
+# Book covers are user data, not source. Django recreates the
+# book_covers folder itself on the first upload.
+/media/
+
+# --- collectstatic output --------------------------------------------
+# static/ IS committed, it holds our own CSS, JS and logo files.
+# staticfiles/ is the generated STATIC_ROOT and is not committed.
+/staticfiles/
+
+# --- Test and coverage artefacts -------------------------------------
+.coverage
+htmlcov/
+.pytest_cache/
+
+# --- Editors ---------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+*~
+
+# --- Windows and OneDrive noise --------------------------------------
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.tmp
+~$*
+.DS_Store

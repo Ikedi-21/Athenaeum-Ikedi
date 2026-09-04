@@ -1,0 +1,10 @@
+# Store every text file with LF endings in the repository regardless of
+# the operating system it was written on. Without this, files committed
+# from Windows show up as entirely rewritten when read anywhere else.
+* text=auto
+
+# Leave binary assets alone, no line ending conversion.
+*.png binary
+*.webp binary
+*.pdf binary
+*.ico binary
