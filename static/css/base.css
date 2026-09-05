@@ -1,0 +1,746 @@
+/*
+ * base.css
+ *
+ * The minimum styling needed for the pages written so far to be readable
+ * and usable. The full design system, the dark mode toggle and the
+ * component polish arrive with the templates and CSS task; what is here is
+ * the foundation those will build on, so the custom properties below are
+ * already the real palette rather than placeholders.
+ *
+ * Everything is declared as a custom property on :root because dark mode
+ * will work by overriding these values in one place rather than by
+ * restating every rule in the file.
+ */
+
+:root {
+  /* Palette. Navy carries every interactive element, the off white keeps
+     the page from glaring, and the two greys separate a heading from
+     supporting text without introducing a third hue. */
+  --page: #fafafa;
+  --surface: #ffffff;
+  --ink: #2c2c2c;
+  --ink-soft: #6b7280;
+  --navy: #1a2f45;
+  --navy-dark: #142434;
+  --line: #e5e7eb;
+
+  /* Status colours, used only for availability and form errors, so that a
+     colour on this site always means something. */
+  --good: #166534;
+  --bad: #b91c1c;
+
+  /* Playfair Display and Inter are named first and will be used once the
+     font files are self hosted. The Content Security Policy allows fonts
+     from this site only, not from a CDN, so the fallbacks matter: until the
+     files are added these stacks quietly resolve to Georgia and the system
+     interface font, which are close enough in proportion that nothing
+     shifts when the real fonts land. */
+  --font-display: "Playfair Display", Georgia, "Times New Roman", serif;
+  --font-body: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
+
+  /* One spacing step, used as a multiple everywhere, so vertical rhythm
+     stays consistent without magic numbers scattered through the file. */
+  --gap: 1rem;
+  --radius: 6px;
+}
+
+/* border-box means a declared width includes its own padding and border,
+   which is what makes a grid of cards line up. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--ink);
+  font-family: var(--font-body);
+  /* Unitless, so it is inherited as a ratio and a large heading gets
+     proportionally tighter leading rather than the same fixed gap. */
+  line-height: 1.6;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  color: var(--ink);
+  line-height: 1.25;
+  margin: 0 0 calc(var(--gap) * 0.5);
+}
+
+h1 {
+  font-size: 2rem;
+}
+
+h2 {
+  font-size: 1.35rem;
+}
+
+p {
+  margin: 0 0 var(--gap);
+}
+
+a {
+  color: var(--navy);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+a:hover {
+  color: var(--navy-dark);
+}
+
+/* A visible focus ring is kept rather than removed. It is how a keyboard
+   user knows where they are, and outline: none is the single most common
+   accessibility regression in hand written CSS. */
+:focus-visible {
+  outline: 2px solid var(--navy);
+  outline-offset: 2px;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ------------------------------------------------------------------ */
+/* Layout                                                              */
+/* ------------------------------------------------------------------ */
+
+/* One shared width constraint. Long lines of text are hard to read, and a
+   measure of roughly 70 to 80 characters is where most people stop losing
+   their place between lines. */
+.container {
+  width: 100%;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 var(--gap);
+}
+
+.site-main {
+  padding-top: calc(var(--gap) * 2);
+  padding-bottom: calc(var(--gap) * 3);
+  /* Pushes the footer down on a short page so it sits at the bottom of the
+     window rather than halfway up it. */
+  min-height: 60vh;
+}
+
+/* The skip link sits off screen until it is focused, so it costs a sighted
+   visitor nothing while still being the first thing a keyboard user
+   reaches. clip-path rather than display: none, because a hidden element
+   cannot receive focus at all. */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  background: var(--navy);
+  color: #fff;
+  padding: 0.5rem 1rem;
+  z-index: 10;
+}
+
+.skip-link:focus {
+  left: var(--gap);
+}
+
+/* ------------------------------------------------------------------ */
+/* Header and navigation                                               */
+/* ------------------------------------------------------------------ */
+
+.site-header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+
+.site-header__inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap);
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+}
+
+.site-header__brand {
+  display: inline-flex;
+  align-items: center;
+}
+
+.site-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gap);
+  font-size: 0.95rem;
+}
+
+.site-nav__who {
+  color: var(--ink-soft);
+}
+
+/* The logout control is a form so that signing out is a POST. Stripping the
+   form's own block layout keeps it sitting inline with the links beside it,
+   so the markup can be correct without the navigation looking odd. */
+.site-nav__logout {
+  margin: 0;
+  display: inline;
+}
+
+.badge {
+  display: inline-block;
+  background: var(--navy);
+  color: #fff;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Buttons                                                             */
+/* ------------------------------------------------------------------ */
+
+/* One class covers both a real button element and a link styled as one, so
+   the markup can stay semantically correct: a form submit is a button, a
+   navigation target is a link, and they still match visually. */
+.button {
+  display: inline-block;
+  background: var(--navy);
+  color: #fff;
+  border: 1px solid var(--navy);
+  border-radius: var(--radius);
+  padding: 0.55rem 1.1rem;
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.button:hover {
+  background: var(--navy-dark);
+  color: #fff;
+}
+
+.button--quiet {
+  background: transparent;
+  color: var(--navy);
+}
+
+.button--quiet:hover {
+  background: var(--line);
+  color: var(--navy-dark);
+}
+
+.button--small {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.9rem;
+}
+
+/* ------------------------------------------------------------------ */
+/* Messages                                                            */
+/* ------------------------------------------------------------------ */
+
+/* Django tags each message with its level, and the template turns that into
+   a class, so success, info, warning and error can each look different
+   without the view knowing anything about the styling. */
+.messages {
+  list-style: none;
+  margin: var(--gap) 0 0;
+  padding: 0;
+}
+
+.message {
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--navy);
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 0.65rem 0.9rem;
+  margin-bottom: 0.5rem;
+}
+
+.message--success {
+  border-left-color: var(--good);
+}
+
+.message--error {
+  border-left-color: var(--bad);
+}
+
+/* ------------------------------------------------------------------ */
+/* Panels and page headings                                            */
+/* ------------------------------------------------------------------ */
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: calc(var(--gap) * 1.5);
+  margin-bottom: calc(var(--gap) * 1.5);
+}
+
+/* Auth forms are narrow on purpose. A login box stretched across a wide
+   screen puts the label at one edge and the field at the other. */
+.panel--narrow {
+  max-width: 30rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.panel__footnote {
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+  margin-bottom: 0;
+}
+
+.panel__footnote a {
+  color: var(--navy);
+}
+
+.page-head {
+  margin-bottom: calc(var(--gap) * 1.5);
+}
+
+.page-head__back {
+  font-size: 0.9rem;
+}
+
+.lede {
+  color: var(--ink-soft);
+  font-size: 1.05rem;
+  max-width: 55ch;
+}
+
+.plain-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.plain-list li {
+  padding: 0.3rem 0;
+}
+
+/* ------------------------------------------------------------------ */
+/* Forms                                                               */
+/* ------------------------------------------------------------------ */
+
+.field {
+  margin-bottom: var(--gap);
+}
+
+.field__label {
+  display: block;
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 0.25rem;
+}
+
+.field__required {
+  color: var(--bad);
+}
+
+/* The widgets are selected by type rather than by a class, because Django
+   renders them and this project does not add a class to every one. Listing
+   the types explicitly avoids also catching a checkbox or a submit button,
+   which should not be stretched to full width. */
+.field input[type="text"],
+.field input[type="email"],
+.field input[type="password"],
+.field input[type="number"],
+.field input[type="date"],
+.field input[type="url"],
+.field select,
+.field textarea {
+  width: 100%;
+  font: inherit;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0.5rem 0.65rem;
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  border-color: var(--navy);
+}
+
+.field__help {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  margin: 0.3rem 0 0;
+}
+
+/* The password validator rules arrive as a real list inside the help text,
+   so it needs to be tamed rather than left at browser defaults. */
+.field__help ul {
+  margin: 0.2rem 0 0;
+  padding-left: 1.1rem;
+}
+
+.field__error {
+  font-size: 0.85rem;
+  color: var(--bad);
+  margin: 0.3rem 0 0;
+}
+
+/* An invalid field is marked by more than colour, since colour alone is
+   invisible to a red and green colour blind reader. The message underneath
+   is the real signal; the border is the reinforcement. */
+.field--invalid input,
+.field--invalid select,
+.field--invalid textarea {
+  border-color: var(--bad);
+}
+
+.form-errors {
+  list-style: none;
+  margin: 0 0 var(--gap);
+  padding: 0.65rem 0.9rem;
+  border: 1px solid var(--bad);
+  border-radius: var(--radius);
+  color: var(--bad);
+  background: var(--surface);
+}
+
+/* ------------------------------------------------------------------ */
+/* Catalogue grid                                                      */
+/* ------------------------------------------------------------------ */
+
+/* auto-fill with a minimum column width means the number of columns follows
+   the window on its own, with no media queries and no fixed breakpoints to
+   maintain. The page size of twelve divides evenly into two, three and four
+   columns, so the last row is never left ragged. */
+.book-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: calc(var(--gap) * 1.25);
+}
+
+.book-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: var(--gap);
+  display: flex;
+  flex-direction: column;
+}
+
+/* The cover, title and author are one link, so the whole block is a single
+   target rather than three adjacent links to the same place, which a screen
+   reader would otherwise announce three times over. */
+.book-card__link {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  text-decoration: none;
+  color: inherit;
+}
+
+.book-card__link:hover .book-card__title {
+  text-decoration: underline;
+}
+
+.book-card__cover {
+  /* A fixed ratio keeps the grid aligned whatever proportions the uploaded
+     image has, and object-fit crops to fill it instead of stretching. */
+  aspect-ratio: 2 / 3;
+  width: 100%;
+  object-fit: cover;
+  border-radius: var(--radius);
+  background: var(--line);
+}
+
+.book-card__cover--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 3rem;
+  color: var(--ink-soft);
+  background: var(--line);
+  aspect-ratio: 2 / 3;
+  border-radius: var(--radius);
+}
+
+.book-card__title {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  color: var(--ink);
+}
+
+.book-card__author {
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+}
+
+.book-card__meta {
+  margin: 0.6rem 0 0.35rem;
+}
+
+.tag {
+  display: inline-block;
+  font-size: 0.8rem;
+  color: var(--navy);
+  background: var(--page);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.1rem 0.6rem;
+  text-decoration: none;
+}
+
+.tag:hover {
+  border-color: var(--navy);
+}
+
+/* The word itself carries the meaning, so these two are readable with the
+   colour ignored entirely. */
+.status {
+  font-size: 0.85rem;
+  margin: auto 0 0;
+}
+
+.status--available {
+  color: var(--good);
+}
+
+.status--out {
+  color: var(--ink-soft);
+}
+
+.empty-state {
+  /* Spans the whole grid rather than sitting in the first cell, so the
+     message is centred under the heading instead of pretending to be a
+     card. */
+  grid-column: 1 / -1;
+  color: var(--ink-soft);
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+  padding: calc(var(--gap) * 2);
+  text-align: center;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--gap);
+  margin-top: calc(var(--gap) * 2);
+}
+
+.pagination__count {
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
+/* ------------------------------------------------------------------ */
+/* Book detail                                                         */
+/* ------------------------------------------------------------------ */
+
+.book-detail {
+  display: grid;
+  /* The cover column is fixed and the text column takes what is left. minmax
+     with a zero minimum stops a long unbroken title from forcing the grid
+     wider than the page. */
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: calc(var(--gap) * 2);
+  align-items: start;
+}
+
+.book-detail__cover img,
+.book-detail__cover .book-card__cover--empty {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  border-radius: var(--radius);
+}
+
+.book-detail__author {
+  color: var(--ink-soft);
+  font-size: 1.1rem;
+  margin-top: -0.25rem;
+}
+
+/* A definition list laid out as two columns, label beside value. */
+.facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.3rem var(--gap);
+  margin: calc(var(--gap) * 1.5) 0;
+  font-size: 0.95rem;
+}
+
+.facts dt {
+  color: var(--ink-soft);
+}
+
+.facts dd {
+  margin: 0;
+}
+
+/* Applied to librarian written prose that has been through the linebreaks
+   filter, so the measure is constrained for reading rather than filling the
+   column. */
+.prose {
+  max-width: 65ch;
+}
+
+.book-detail__action {
+  border-top: 1px solid var(--line);
+  padding-top: var(--gap);
+  margin-top: var(--gap);
+}
+
+/* ------------------------------------------------------------------ */
+/* Reviews                                                             */
+/* ------------------------------------------------------------------ */
+
+.reviews {
+  margin-top: calc(var(--gap) * 3);
+}
+
+.review-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--gap);
+}
+
+.review {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: var(--gap);
+}
+
+.review__head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: baseline;
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+  margin-bottom: 0.4rem;
+}
+
+.review__rating {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.review__who {
+  color: var(--ink);
+}
+
+/* ------------------------------------------------------------------ */
+/* Landing page                                                        */
+/* ------------------------------------------------------------------ */
+
+.hero {
+  text-align: center;
+  padding: calc(var(--gap) * 3) 0;
+}
+
+.hero__title {
+  font-size: 2.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.hero__lede {
+  color: var(--ink-soft);
+  font-size: 1.15rem;
+  /* auto margins centre the constrained measure under the heading. */
+  max-width: 40ch;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap);
+  justify-content: center;
+  margin-top: calc(var(--gap) * 1.5);
+}
+
+.feature-grid,
+.panel-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: calc(var(--gap) * 1.5);
+}
+
+.feature h2 {
+  font-size: 1.15rem;
+}
+
+.feature p {
+  color: var(--ink-soft);
+  margin-bottom: 0;
+}
+
+/* Cancels the panel bottom margin inside a grid, since the grid gap already
+   provides the spacing and the two together read as uneven. */
+.panel-grid .panel {
+  margin-bottom: 0;
+}
+
+/* ------------------------------------------------------------------ */
+/* Footer                                                              */
+/* ------------------------------------------------------------------ */
+
+.site-footer {
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+  padding: calc(var(--gap) * 1.5) 0;
+}
+
+.site-footer p {
+  margin: 0;
+}
+
+/* ------------------------------------------------------------------ */
+/* Narrow screens                                                      */
+/* ------------------------------------------------------------------ */
+
+/* The grids above size themselves, so the only layout that needs a
+   breakpoint is the book detail page, whose fixed cover column has no room
+   to sit beside the text on a phone. */
+@media (max-width: 640px) {
+  .book-detail {
+    grid-template-columns: 1fr;
+  }
+
+  .book-detail__cover {
+    max-width: 220px;
+  }
+
+  .hero__title {
+    font-size: 2rem;
+  }
+}
+
+/* The dark mode toggle belongs with the templates and CSS task. It will work
+   by setting a data attribute on the html element and restating only the
+   custom properties from :root, which is why no colour is hard coded
+   anywhere below that block. */
+
+
+
+
+
+
+
+

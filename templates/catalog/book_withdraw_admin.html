@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% comment %}
+  The page that asks before a book is withdrawn.
+
+  BookWithdrawView draws this on GET and does the work on POST, so the button
+  below is the only way through. What the page is for is putting the cost of
+  the decision in front of the person making it: how many copies are still
+  out with students, and who is queueing for a book that is about to stop
+  being lent.
+
+  Nothing is deleted by any of this. The book keeps its row, its reviews and
+  its borrowing history, and it stops appearing on the public shelf. That is
+  what withdrawal means in a library that has to be able to say who had what.
+{% endcomment %}
+
+{% block page_title %}Withdraw {{ book.title }}{% endblock %}
+
+{% block content %}
+  <header class="page-head">
+    <h1>Withdraw {{ book.title }}?</h1>
+    <p class="lede">by {{ book.author }}</p>
+    <p class="page-head__back">
+      <a href="{% url 'catalog:book_manage' %}">Back to the catalogue</a>
+    </p>
+  </header>
+
+  <div class="panel">
+    <h2>What this does</h2>
+    <ul class="plain-list">
+      <li>The book disappears from the public shelf and cannot be borrowed.</li>
+      <li>Its reviews and its borrowing history are kept.</li>
+      <li>It can be put back at any time from the management list.</li>
+    </ul>
+
+    {% comment %}
+      copies_on_loan comes from the view, which reads it from the book's own
+      borrowed_count property rather than counting loans in a second query.
+
+      Withdrawing is not a demand that anything be returned early, and saying
+      so here answers the question the number raises.
+    {% endcomment %}
+    {% if copies_on_loan %}
+      <h2>Copies still out</h2>
+      <p>
+        {{ copies_on_loan }} cop{{ copies_on_loan|pluralize:"y,ies" }}
+        {{ copies_on_loan|pluralize:"is,are" }} on loan. Those loans carry on
+        as normal and can be returned at the desk in the usual way.
+      </p>
+    {% endif %}
+
+    {% comment %}
+      The queue is cancelled by the same POST that withdraws the book, in one
+      transaction, so there is no moment where a hold exists for a book the
+      library no longer lends. Everybody affected is named here because a
+      cancelled hold is somebody's disappointment and it should not be an
+      anonymous number.
+
+      They are not told automatically. cancel_reservation writes the audit
+      record and releases the copy but sends nothing to the student, so the
+      note below is honest about who has to do that. Student notifications
+      arrive with the dashboard task.
+    {% endcomment %}
+    {% if waiting %}
+      <h2>Holds that will be cancelled</h2>
+      <ul class="plain-list">
+        {% for reservation in waiting %}
+          <li>
+            {{ reservation.student.get_full_name|default:reservation.student.get_username }}
+            <span class="badge">{{ reservation.get_status_display }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+      <p class="panel__footnote">
+        Nobody in this list is told automatically, so let them know if the
+        book is not coming back soon.
+      </p>
+    {% endif %}
+
+    {% comment %}
+      The confirmation is a POST for the same reason the restore button is:
+      it changes state, and a link that changes state can be followed by a
+      crawler or by a browser guessing what will be clicked next. The token
+      is what proves this came from a page this site served.
+    {% endcomment %}
+    <form method="post"
+          action="{% url 'catalog:book_withdraw' book.pk %}">
+      {% csrf_token %}
+      <div class="form-actions">
+        <button type="submit" class="button button--danger">
+          Withdraw {{ book.title }}
+        </button>
+        <a class="button button--quiet"
+           href="{% url 'catalog:book_manage' %}">Keep it on the shelf</a>
+      </div>
+    </form>
+  </div>
+{% endblock %}

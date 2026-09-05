@@ -33,6 +33,13 @@ db.sqlite3-journal
 # staticfiles/ is the generated STATIC_ROOT and is not committed.
 /staticfiles/
 
+# --- Third party reference material ----------------------------------
+# Screenshots of other people's sites, kept locally as design reference.
+# This repo is going public, so someone else's landing page does not
+# belong in it. docs/brand/ IS committed: that artwork is ours, and it
+# has already been lost once.
+/docs/inspiration/
+
 # --- Test and coverage artefacts -------------------------------------
 .coverage
 htmlcov/

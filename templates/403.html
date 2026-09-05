@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% comment %}
+  Shown when a signed in person reaches a page their role does not allow,
+  which in this project means a student opening a librarian page. Django
+  renders this whenever a view raises PermissionDenied.
+
+  Anonymous visitors never see this page. The role decorators in
+  accounts/decorators.py and the mixins in accounts/mixins.py check
+  is_authenticated first and redirect to the login form instead, because
+  telling somebody who has not signed in that they are forbidden is
+  unhelpful when signing in might well be all they need to do.
+
+  Like 404.html, this replaces Django's own debug page only when DEBUG is
+  False.
+{% endcomment %}
+
+{% block page_title %}Not allowed{% endblock %}
+
+{% block content %}
+  <div class="panel panel--narrow">
+    <h1>Not allowed</h1>
+
+    {% comment %}
+      exception carries the message the decorator or mixin raised, such as
+      the note that a page belongs to library administration. It is written
+      in this project's own code, never by a user, and Django escapes it on
+      the way out regardless.
+
+      The default is there because Django also raises PermissionDenied from
+      places that pass no message at all.
+    {% endcomment %}
+    <p>{{ exception|default:"This page is not available to your account." }}</p>
+
+    <p>
+      If you believe your account should have access to it, ask a librarian
+      to check the role on it.
+    </p>
+
+    <p>
+      <a class="button" href="{% url 'dashboard:home' %}">Back to your dashboard</a>
+    </p>
+  </div>
+{% endblock %}

@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+{% load catalog_extras %}
+
+{% comment %}
+  One book, everything known about it, and the place a student says what they
+  thought of it.
+
+  The review form is handled by the view rather than by a separate page:
+  BookDetailView mixes in FormMixin and posts back to this same address, so a
+  review with an error in it redraws this page with the error in place
+  instead of sending the reader somewhere else and back. That is why form is
+  read from the context here rather than being built in a template tag.
+
+  form is None for anybody who cannot review, which is everybody not signed
+  in as a student. The template does not decide that, it only draws what it
+  is given, so the rule lives in one place in the view.
+{% endcomment %}
+
+{% block page_title %}{{ book.title }}{% endblock %}
+{% block page_description %}{{ book.title }} by {{ book.author }}, in the Athenaeum Ikedi catalogue.{% endblock %}
+
+{% block content %}
+  <article class="book-detail">
+    <div class="book-detail__cover">
+      {% if book.cover_image %}
+        <img src="{{ book.cover_image.url }}" alt="Cover of {{ book.title }}">
+      {% else %}
+        <span class="book-card__cover--empty" aria-hidden="true">{{ book.title|first }}</span>
+      {% endif %}
+    </div>
+
+    <div class="book-detail__body">
+      <h1>{{ book.title }}</h1>
+      <p class="book-detail__author">by {{ book.author }}</p>
+
+      <p>
+        <a class="tag" href="{{ book.category.get_absolute_url }}">{{ book.category.name }}</a>
+      </p>
+
+      {% comment %}
+        The average and the count are annotated onto the book by the view,
+        not stored on the row, so they cannot drift out of step with the
+        reviews below. A rating of zero is impossible, ratings run from one
+        to five, so a falsy average means nobody has reviewed this yet.
+
+        The glyphs are hidden from a screen reader, which would otherwise
+        read "black star black star", and the same fact follows in words.
+      {% endcomment %}
+      {% if book.average_rating %}
+        <p class="rating-summary">
+          <span class="stars" aria-hidden="true">{{ book.average_rating|stars }}</span>
+          <span class="rating-summary__text">
+            {{ book.average_rating|floatformat:1 }} out of 5
+            from {{ book.review_count }} review{{ book.review_count|pluralize }}
+          </span>
+        </p>
+
+        {% comment %}
+          The same figure as a bar, for the fraction of a star the glyphs
+          above have to round away. It is empty markup until the stylesheet
+          gives it a height and a background in the design task, so the page
+          reads correctly either way.
+
+          A width has to be an inline style, since the number is different
+          for every book and a stylesheet cannot know it. The Content
+          Security Policy in settings.py allows style attributes for exactly
+          this while still requiring a nonce on any style block, and that
+          allowance is commented there with this case in mind.
+        {% endcomment %}
+        <div class="rating-bar" aria-hidden="true">
+          <span class="rating-bar__fill"
+                style="width: {{ book.average_rating|rating_percent }}%"></span>
+        </div>
+      {% else %}
+        <p class="rating-summary rating-summary--none">Not yet rated</p>
+      {% endif %}
+
+      {% comment %}
+        A definition list is used rather than a table because this is a set
+        of label and value pairs about one item, not rows of comparable
+        records, and a screen reader announces the pairing.
+      {% endcomment %}
+      <dl class="facts">
+        <dt>ISBN</dt>
+        <dd>{{ book.isbn }}</dd>
+
+        {% if book.published_date %}
+          <dt>Published</dt>
+          {# The date filter is given a format so the output does not depend on the active locale. #}
+          <dd>{{ book.published_date|date:"j F Y" }}</dd>
+        {% endif %}
+
+        <dt>Copies</dt>
+        <dd>{{ book.available_quantity }} available of {{ book.quantity }} owned</dd>
+
+        <dt>Added</dt>
+        <dd>{{ book.added_date|date:"j F Y" }}</dd>
+      </dl>
+
+      {% if book.description %}
+        {# linebreaks turns the blank lines a librarian typed into paragraphs, and escapes the text as it goes. #}
+        <div class="prose">{{ book.description|linebreaks }}</div>
+      {% endif %}
+
+      {% comment %}
+        Borrowing is not wired up yet. The circulation app has no URL
+        patterns at this point, so a link to a borrow view would raise
+        NoReverseMatch and take this whole page down with it. The state is
+        shown honestly instead, and the button arrives with the circulation
+        task.
+      {% endcomment %}
+      <div class="book-detail__action">
+        {% if book.is_available %}
+          <p class="status status--available">Available to borrow</p>
+        {% else %}
+          <p class="status status--out">Every copy is currently on loan</p>
+        {% endif %}
+
+        {% if not user.is_authenticated %}
+          <p class="panel__footnote">
+            <a href="{% url 'accounts:login' %}">Sign in</a> or
+            <a href="{% url 'accounts:register' %}">join the library</a> to borrow.
+          </p>
+        {% endif %}
+      </div>
+
+      {% comment %}
+        A librarian reading a book's page can correct it from there. Both
+        views check permission themselves, so these links are a shortcut and
+        not the thing keeping students out of them.
+      {% endcomment %}
+      {% if user.is_authenticated and user.is_librarian %}
+        <p class="book-detail__tools">
+          <a href="{% url 'catalog:book_edit' book.pk %}">Edit this book</a>
+          <a href="{% url 'catalog:book_withdraw' book.pk %}">Withdraw it</a>
+        </p>
+      {% endif %}
+    </div>
+  </article>
+
+  <section class="reviews" aria-labelledby="reviews-heading">
+    <h2 id="reviews-heading">Reviews</h2>
+
+    {% comment %}
+      form is None unless the reader is signed in as a student, so this whole
+      block disappears for a visitor and for a librarian without the template
+      testing the role itself. BookDetailView.get_context_data decides, and
+      the same decision guards its post method, so a hand crafted POST cannot
+      get past what this hides.
+    {% endcomment %}
+    {% if form %}
+      <div class="panel review-form">
+        {% comment %}
+          Two headings for two situations. The view hands back a form bound
+          to an existing review when the student has already written one, so
+          this page becomes an edit page without a separate address. That is
+          what keeps the one review per student rule from ever showing up as
+          an error message: there is no second review to try to create.
+        {% endcomment %}
+        {% if existing_review %}
+          <h3>Edit your review</h3>
+          <p class="panel__footnote">
+            You reviewed this on
+            {{ existing_review.created_date|date:"j F Y" }}.
+          </p>
+        {% else %}
+          <h3>Write a review</h3>
+        {% endif %}
+
+        {% comment %}
+          No action attribute, so this posts back to the address of the page
+          it is on, which is the address that handles it. The CSRF token is
+          what proves the request came from a page this site served.
+        {% endcomment %}
+        <form method="post" novalidate>
+          {% csrf_token %}
+          {% include "includes/form_fields.html" %}
+          <button type="submit" class="button">
+            {% if existing_review %}Save changes{% else %}Post review{% endif %}
+          </button>
+        </form>
+      </div>
+    {% elif not user.is_authenticated %}
+      {% comment %}
+        next carries the reader back here after signing in. urlencode is what
+        makes that safe: without it a path holding a question mark or an
+        ampersand would break out of the parameter and be read as the start
+        of another one.
+      {% endcomment %}
+      <p class="panel__footnote">
+        <a href="{% url 'accounts:login' %}?next={{ request.path|urlencode }}">Sign in</a>
+        to write a review.
+      </p>
+    {% elif user.is_librarian %}
+      {# Said plainly rather than left as a missing form somebody has to work out. #}
+      <p class="panel__footnote">Reviews are written by students.</p>
+    {% endif %}
+
+    {% comment %}
+      reviews is the related_name on the Review model, and the view has
+      already prefetched it together with each reviewer, so this loop costs
+      no extra queries however many reviews there are. Meta.ordering on
+      Review puts the newest first.
+    {% endcomment %}
+    <ul class="review-list">
+      {% for review in book.reviews.all %}
+        {% comment %}
+          A student's own review is marked so they can tell which one the
+          form above is editing. existing_review is None for everybody else,
+          and comparing a primary key against nothing is simply false, so no
+          extra test is needed to keep this out of other readers' way.
+        {% endcomment %}
+        <li class="review{% if review.pk == existing_review.pk %} review--mine{% endif %}">
+          <p class="review__head">
+            <span class="stars" aria-hidden="true">{{ review.rating|stars }}</span>
+            <span class="review__rating">{{ review.rating }} out of 5</span>
+            <span class="review__who">
+              {% if review.pk == existing_review.pk %}
+                Your review
+              {% else %}
+                {{ review.student.get_short_name|default:review.student.get_username }}
+              {% endif %}
+            </span>
+            {# The datetime attribute is the machine readable form, which is what lets a browser or a reader offer the full timestamp. #}
+            <time datetime="{{ review.created_date|date:'c' }}">{{ review.created_date|date:"j F Y" }}</time>
+          </p>
+          {% if review.comment %}
+            <div class="prose">{{ review.comment|linebreaks }}</div>
+          {% else %}
+            {# A rating with nothing written under it is not an empty review, so it says so rather than leaving a gap. #}
+            <p class="review__nocomment">Rated without a comment.</p>
+          {% endif %}
+        </li>
+      {% empty %}
+        <li class="empty-state"><p>Nobody has reviewed this book yet.</p></li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <p class="page-head__back">
+    <a href="{% url 'catalog:book_list' %}">Back to the catalogue</a>
+  </p>
+{% endblock %}

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block page_title %}Sign in{% endblock %}
+
+{% block content %}
+  <div class="panel panel--narrow">
+    <h1>Sign in</h1>
+    <p class="lede">Enter your library credentials to reach your dashboard and your loans.</p>
+
+    {% comment %}
+      No action attribute, so the form posts back to the address it was
+      served from. That keeps the next parameter intact if the person
+      arrived here by trying to open a page that required a login.
+    {% endcomment %}
+    <form method="post" novalidate>
+      {% comment %}
+        Without this token Django's CsrfViewMiddleware rejects the post.
+        The token proves the form was served by this site, which is what
+        stops another site from posting to it on a signed in person's
+        behalf.
+      {% endcomment %}
+      {% csrf_token %}
+
+      {% include "includes/form_fields.html" %}
+
+      {% comment %}
+        Carries forward the page the person was trying to reach when the
+        login was demanded, so they land there instead of on the dashboard.
+        Django validates this value against the allowed hosts before
+        redirecting, so a crafted link cannot use it to bounce a freshly
+        signed in member off to another site.
+      {% endcomment %}
+      {% if next %}
+        <input type="hidden" name="next" value="{{ next }}">
+      {% endif %}
+
+      <button type="submit" class="button">Sign in</button>
+    </form>
+
+    <p class="panel__footnote">
+      <a href="{% url 'accounts:password_reset' %}">Forgotten your password?</a>
+    </p>
+    <p class="panel__footnote">
+      No account yet? <a href="{% url 'accounts:register' %}">Join the library</a>.
+    </p>
+  </div>
+{% endblock %}

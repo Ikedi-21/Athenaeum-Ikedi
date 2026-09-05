@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block page_title %}Join the library{% endblock %}
+
+{% block content %}
+  <div class="panel panel--narrow">
+    <h1>Join the library</h1>
+    <p class="lede">
+      Registering creates a student account, which lets you borrow up to
+      three books at a time and review what you have read.
+    </p>
+
+    <form method="post" novalidate>
+      {% csrf_token %}
+
+      {% comment %}
+        The role field is deliberately absent from this form. It is not
+        hidden by the template: the registration form does not list it in
+        Meta.fields at all, so a role posted by hand is discarded before
+        the form ever validates. A librarian account can only be made by
+        an existing librarian in the admin, or from the command line.
+      {% endcomment %}
+      {% include "includes/form_fields.html" %}
+
+      <button type="submit" class="button">Create my account</button>
+    </form>
+
+    <p class="panel__footnote">
+      Already a member? <a href="{% url 'accounts:login' %}">Sign in</a>.
+    </p>
+  </div>
+{% endblock %}

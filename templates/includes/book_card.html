@@ -1,0 +1,77 @@
+{% load catalog_extras %}
+{% comment %}
+  One book as it appears in a grid. Included by the public shelf list and by
+  anything else that shows books as cards, so a change to what a card says is
+  made once.
+
+  Expects a book in the context, which it gets from the surrounding for loop
+  without being passed anything, since an include inherits the context it
+  sits in.
+
+  Two annotations are read here, average_rating and review_count, and both
+  are added by BookQueryMixin.get_queryset in catalog/views.py. Any view that
+  includes this file has to annotate them or the rating line silently reads
+  as unrated, which is why the mixin annotates them on every list request
+  rather than only when a rating sort is chosen.
+
+  There is deliberately no line about copies available. A shelf card is for
+  deciding what to look at, and a number that is true when the page is drawn
+  and false by the time it is read is worse than no number. The book's own
+  page says what can be borrowed, and it says it at the moment somebody is
+  actually about to borrow.
+{% endcomment %}
+<li class="book-card">
+  <a class="book-card__link" href="{{ book.get_absolute_url }}">
+    {% if book.cover_image %}
+      {% comment %}
+        The alt text names the book rather than describing the picture,
+        because that is what somebody using a screen reader needs from a
+        cover thumbnail in a list of links. loading="lazy" leaves the
+        offscreen covers of a twelve card grid unfetched until they are
+        scrolled towards.
+      {% endcomment %}
+      <img class="book-card__cover" src="{{ book.cover_image.url }}"
+           alt="Cover of {{ book.title }}" loading="lazy">
+    {% else %}
+      {% comment %}
+        A book with no uploaded cover gets a lettered panel instead of a
+        broken image. aria-hidden because the title is printed directly
+        below it, so reading the initial aloud would only repeat the first
+        letter of what follows.
+      {% endcomment %}
+      <span class="book-card__cover book-card__cover--empty" aria-hidden="true">
+        {{ book.title|first }}
+      </span>
+    {% endif %}
+
+    <span class="book-card__title">{{ book.title }}</span>
+    <span class="book-card__author">{{ book.author }}</span>
+  </a>
+
+  {# Outside the link above, so the category is its own destination rather than being swallowed by the book link. #}
+  <p class="book-card__meta">
+    <a class="tag" href="{{ book.category.get_absolute_url }}">{{ book.category.name }}</a>
+  </p>
+
+  {% comment %}
+    A rating of zero is impossible, since Review.rating is constrained to
+    between one and five, so an average that is falsy means there are no
+    reviews rather than meaning a very bad book. That is what makes this
+    plain if test safe here.
+
+    The stars filter returns a run of glyphs, which a screen reader would
+    read as "black star black star black star", so the glyphs are hidden
+    from it and the same information follows in words.
+  {% endcomment %}
+  {% if book.average_rating %}
+    <p class="book-card__rating">
+      <span class="stars" aria-hidden="true">{{ book.average_rating|stars }}</span>
+      <span class="book-card__rating-text">
+        {{ book.average_rating|floatformat:1 }} out of 5
+        from {{ book.review_count }} review{{ book.review_count|pluralize }}
+      </span>
+    </p>
+  {% else %}
+    <p class="book-card__rating book-card__rating--none">Not yet rated</p>
+  {% endif %}
+</li>

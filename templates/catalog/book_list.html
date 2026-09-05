@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% comment %}
+  The browsable shelf.
+
+  This one template serves the whole catalogue and a single category, because
+  CategoryBookListView subclasses BookListView and inherits template_name
+  from it. The only difference between the two pages is that a category page
+  also puts a category object in the context, which the heading below and the
+  filter include both check for.
+
+  Nothing here knows how a book was found. The search, category and sort
+  controls are in includes/book_filters.html, one card is in
+  includes/book_card.html, and the page turners are in
+  includes/pagination.html. What is left in this file is the shape of the
+  page and the wording around an empty result, which is the part that differs
+  between the public list and the librarian's.
+{% endcomment %}
+
+{% block page_title %}{% if category %}{{ category.name }}{% else %}Catalogue{% endif %}{% endblock %}
+
+{% block page_description %}{% if category %}Books filed under {{ category.name }} in the Athenaeum Ikedi catalogue.{% else %}Browse every book on the shelves at Athenaeum Ikedi.{% endif %}{% endblock %}
+
+{% block content %}
+  <header class="page-head">
+    {% if category %}
+      <h1>{{ category.name }}</h1>
+      {% if category.description %}
+        <p class="lede">{{ category.description }}</p>
+      {% endif %}
+      <p class="page-head__back">
+        <a href="{% url 'catalog:book_list' %}">All books</a>
+      </p>
+    {% else %}
+      <h1>Catalogue</h1>
+      <p class="lede">Everything on the shelves.</p>
+    {% endif %}
+
+    {% comment %}
+      A librarian browsing the public list is one click from the page that
+      lets them change it. Students never see this, and the management views
+      check permission for themselves, so this is a convenience and not the
+      thing keeping anybody out.
+    {% endcomment %}
+    {% if user.is_authenticated and user.is_librarian %}
+      <p class="page-head__tools">
+        <a href="{% url 'catalog:book_manage' %}">Manage the catalogue</a>
+      </p>
+    {% endif %}
+  </header>
+
+  {% include "includes/book_filters.html" %}
+
+  {% comment %}
+    How many were found, said once, above the grid. paginator.count is the
+    size of the whole result set rather than of this page, which is the
+    number somebody who has just searched wants. ListView always builds a
+    paginator here because the mixin sets paginate_by, so the value is
+    always there to read.
+
+    role="status" means a screen reader announces the new count after a
+    search without the reader having to go looking for it.
+  {% endcomment %}
+  <p class="result-count" role="status">
+    {% if search_term %}
+      {{ paginator.count }} book{{ paginator.count|pluralize }}
+      matching {{ search_term }}
+    {% else %}
+      {{ paginator.count }} book{{ paginator.count|pluralize }}
+    {% endif %}
+  </p>
+
+  {% comment %}
+    The for loop's empty clause runs when the queryset returned nothing,
+    which saves a separate length check and cannot fall out of step with the
+    loop the way a manual count would.
+  {% endcomment %}
+  <ul class="book-grid">
+    {% for book in books %}
+      {% include "includes/book_card.html" %}
+    {% empty %}
+      <li class="empty-state">
+        {% comment %}
+          Two different situations, and telling them apart is the difference
+          between a page that seems broken and one that is merely empty. A
+          search that found nothing is the reader's search to change, so the
+          way out is offered. An empty catalogue is nobody's fault and there
+          is nothing for a reader to do about it.
+        {% endcomment %}
+        {% if search_term or selected_category %}
+          <p>Nothing matched that.</p>
+          <p>
+            Try fewer words, or
+            <a href="{{ request.path }}">clear the search and filters</a>.
+          </p>
+        {% else %}
+          <p>There are no books in the catalogue yet.</p>
+          {% if user.is_authenticated and user.is_librarian %}
+            <p><a href="{% url 'catalog:book_add' %}">Add the first one</a>.</p>
+          {% endif %}
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+
+  {% include "includes/pagination.html" with pagination_label="Catalogue pages" %}
+{% endblock %}

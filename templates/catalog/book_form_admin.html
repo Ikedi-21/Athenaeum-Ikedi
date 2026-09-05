@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% comment %}
+  The add and edit form for a book, one template for both.
+
+  BookCreateView and BookUpdateView both render this and both pass a heading
+  and a submit_label through the context, so the two pages cannot drift apart
+  in appearance the way two near identical files always eventually do. The
+  view knows which job it is doing; this file only needs to know what to call
+  the button.
+
+  form.instance is the book being edited, or an empty unsaved one while
+  adding, which is what the current cover block below tests.
+{% endcomment %}
+
+{% block page_title %}{{ heading }}{% endblock %}
+
+{% block content %}
+  <header class="page-head">
+    <h1>{{ heading }}</h1>
+    <p class="page-head__back">
+      <a href="{% url 'catalog:book_manage' %}">Back to the catalogue</a>
+    </p>
+  </header>
+
+  <div class="panel">
+    {% comment %}
+      enctype is what makes the cover upload work. Without it a browser sends
+      only the file's name and none of its contents, and the field arrives
+      empty with no error to explain why, which is one of the quieter ways a
+      form can waste an afternoon.
+
+      novalidate turns off the browser's own checking so that every message a
+      librarian sees comes from Django. The rules that matter, such as an
+      ISBN's check digit and a total that cannot fall below the copies on
+      loan, are in the form and the model and cannot be expressed in HTML
+      attributes anyway, so the browser's version would only ever be a
+      partial and differently worded second opinion.
+    {% endcomment %}
+    <form method="post" enctype="multipart/form-data" novalidate>
+      {% csrf_token %}
+
+      {% comment %}
+        Shown while editing a book that already has a cover, because a file
+        input cannot show what is currently in the field. Without this the
+        page gives no way to tell a book with a cover from one without,
+        which matters when the decision is whether to upload another.
+      {% endcomment %}
+      {% if form.instance.cover_image %}
+        <p class="field__current">
+          <img class="book-detail__thumb"
+               src="{{ form.instance.cover_image.url }}"
+               alt="The cover currently saved for {{ form.instance.title }}"
+               height="120">
+        </p>
+      {% endif %}
+
+      {% include "includes/form_fields.html" %}
+
+      {% comment %}
+        Said here rather than as help text on the field, because it explains
+        something the form does after it is submitted rather than something
+        to type into it. available_quantity is not on this form at all: the
+        view works out what the shelf count should be from the copies
+        currently on loan, so a librarian buying two more copies of a book
+        with one out gets three owned and two on the shelf without doing the
+        arithmetic themselves.
+      {% endcomment %}
+      <p class="panel__footnote">
+        Changing the number of copies adjusts what is on the shelf by the
+        same amount. Copies already out on loan are left alone.
+      </p>
+
+      <div class="form-actions">
+        <button type="submit" class="button">{{ submit_label }}</button>
+        <a class="button button--quiet"
+           href="{% url 'catalog:book_manage' %}">Cancel</a>
+      </div>
+    </form>
+  </div>
+{% endblock %}

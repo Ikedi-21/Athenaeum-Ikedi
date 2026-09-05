@@ -1,0 +1,125 @@
+{% comment %}
+  The search, category and sort controls that sit above a list of books.
+
+  Shared by the public shelf and by the librarian's management list, which is
+  the whole point: the two lists are driven by the same mixin in
+  catalog/views.py, so they have to offer the same controls or one of them
+  would quietly lack a way to reach half its own rows.
+
+  Reads search_term, selected_category, selected_sort, sort_options and
+  categories from the context, all five supplied by
+  BookQueryMixin.get_context_data. It also reads category, which is present
+  only on a single category page, and uses it to decide whether a category
+  dropdown makes sense at all.
+
+  There is no action attribute. A form without one submits to the address of
+  the page it is on, which is exactly right for all three pages this appears
+  on: the public list stays on the public list, the management list stays
+  under manage/, and a category page keeps its own path so a search inside a
+  category searches inside that category. Naming a URL here instead would
+  send every search on a category page back out to the whole catalogue.
+
+  method="get" rather than post, because a search is a request to read
+  something. It also means the result has an address that can be
+  bookmarked, shared, or reloaded without a browser warning about resending
+  data, and it is what lets the pagination links carry the filters.
+
+  No page field is included, so applying a filter drops the reader back to
+  the first page. That is the correct behaviour: page nine of the old result
+  set has nothing to do with the new one.
+{% endcomment %}
+<form class="filters" method="get" role="search">
+  <div class="filters__row">
+    <div class="field field--search">
+      <label class="field__label" for="filter-q">Search</label>
+      {% comment %}
+        The value is fed back in so the box still holds what was typed after
+        the page reloads. type="search" gives a clear button in most
+        browsers. The name has to stay q, which is what
+        BookQueryMixin.get_search_term reads.
+      {% endcomment %}
+      <input type="search" id="filter-q" name="q" value="{{ search_term }}"
+             placeholder="Title, author or ISBN"
+             autocomplete="off">
+    </div>
+
+    {% comment %}
+      The category dropdown is left out on a category page. The view there
+      takes the category from the path and ignores any category in the query
+      string, so a dropdown would be a control that appears to work and does
+      nothing. A link back to the whole catalogue is offered instead, which
+      is the thing somebody on that page would actually want.
+    {% endcomment %}
+    {% if not category %}
+      <div class="field field--filter">
+        <label class="field__label" for="filter-category">Category</label>
+        <select id="filter-category" name="category">
+          {# An empty value means no category filter, which is what an absent parameter also means, so the two agree. #}
+          <option value="">All categories</option>
+          {% for option in categories %}
+            {% comment %}
+              selected_category is the slug of the chosen category, or an
+              empty string, so this is a comparison of two strings rather
+              than a reach through a relation. book_count is annotated by
+              get_category_choices, and it counts what this particular list
+              can show: lendable books on the public page, everything on
+              the management page.
+            {% endcomment %}
+            <option value="{{ option.slug }}"
+                    {% if option.slug == selected_category %}selected{% endif %}>
+              {{ option.name }} ({{ option.book_count }})
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+    {% endif %}
+
+    <div class="field field--filter">
+      <label class="field__label" for="filter-sort">Sort by</label>
+      {% comment %}
+        The options come from the SORT_OPTIONS whitelist in catalog/views.py
+        rather than being written out here, so the list a reader is offered
+        and the list the view will accept are the same list. Anything else
+        arriving in this parameter is ignored and the default is used, which
+        is what stops a hand edited address from ordering the catalogue by
+        somebody's password hash.
+      {% endcomment %}
+      <select id="filter-sort" name="sort">
+        {% for key, label in sort_options %}
+          <option value="{{ key }}"
+                  {% if key == selected_sort %}selected{% endif %}>
+            {{ label }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    {% comment %}
+      One button applies all three controls. Changing a dropdown does not
+      submit on its own, because that would need JavaScript and would strand
+      anybody who has it turned off. The live version arrives with the design
+      task and will enhance this form rather than replace it.
+    {% endcomment %}
+    <div class="field field--action">
+      <button type="submit" class="button">Apply</button>
+    </div>
+  </div>
+
+  {% comment %}
+    The reset link only appears when there is something to reset. It points
+    at the current path with no query string, which clears the search, the
+    category and the sort in one go and works unchanged on all three pages
+    this form appears on.
+
+    The sort is tested by looking for the parameter itself rather than by
+    comparing selected_sort against the default. selected_sort always holds
+    a value, since the view falls back to one, so comparing it here would
+    mean writing the name of the default in a second place and hoping the
+    two never disagree.
+  {% endcomment %}
+  {% if search_term or selected_category or request.GET.sort %}
+    <p class="filters__reset">
+      <a href="{{ request.path }}">Clear search and filters</a>
+    </p>
+  {% endif %}
+</form>

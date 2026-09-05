@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% comment %}
+  One dashboard address serves both roles. The view puts is_librarian_view
+  in the context and this template branches on it, which means a student
+  cannot reach the librarian panel by guessing a URL: there is no separate
+  URL to guess.
+
+  The panels below are placeholders. The real loan lists, the overdue
+  figures and the analytics charts arrive with the dashboard task. The role
+  split is written out now because that part will not change.
+{% endcomment %}
+
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+  <header class="page-head">
+    <h1>
+      {% if is_librarian_view %}Library administration{% else %}Your library{% endif %}
+    </h1>
+    <p class="lede">
+      Signed in as {{ user.get_full_name|default:user.get_username }}
+      ({{ user.get_role_display }}).
+    </p>
+  </header>
+
+  {% if is_librarian_view %}
+    <div class="panel-grid">
+      <section class="panel">
+        <h2>Catalogue</h2>
+        <p>Adding, editing and withdrawing books arrives with the catalogue task.</p>
+        <p><a href="{% url 'catalog:book_list' %}">Browse the catalogue</a></p>
+      </section>
+
+      <section class="panel">
+        <h2>Members and loans</h2>
+        <p>The student list, the borrowing records and the returns queue are next.</p>
+      </section>
+
+      <section class="panel">
+        <h2>Admin site</h2>
+        {% comment %}
+          Reaching the admin depends on is_staff, which is a separate flag
+          from the librarian role, so this link is shown only when the
+          account actually has it. Offering a link that leads to a login
+          wall would be worse than not offering it.
+        {% endcomment %}
+        {% if user.is_staff %}
+          <p><a href="{% url 'admin:index' %}">Open the Django admin</a></p>
+        {% else %}
+          <p>Your account does not have admin site access.</p>
+        {% endif %}
+      </section>
+    </div>
+  {% else %}
+    <div class="panel-grid">
+      <section class="panel">
+        <h2>On loan to you</h2>
+        <p>Your current loans and their due dates will be listed here.</p>
+      </section>
+
+      <section class="panel">
+        <h2>Borrowing history</h2>
+        <p>Everything you have borrowed and returned will be listed here.</p>
+      </section>
+
+      <section class="panel">
+        <h2>Find something to read</h2>
+        <p><a href="{% url 'catalog:book_list' %}">Browse the catalogue</a></p>
+      </section>
+    </div>
+  {% endif %}
+
+  <section class="panel">
+    <h2>Your account</h2>
+    <ul class="plain-list">
+      <li>Username: {{ user.get_username }}</li>
+      <li>Email: {{ user.email }}</li>
+      <li><a href="{% url 'accounts:password_change' %}">Change your password</a></li>
+    </ul>
+  </section>
+{% endblock %}
