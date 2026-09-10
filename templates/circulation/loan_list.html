@@ -1,0 +1,297 @@
+{% extends "base.html" %}
+
+{% comment %}
+  What a member has out right now, and what they are waiting for.
+
+  Three lists rather than one, because the three mean different things: a
+  book in your hands, a copy on the shelf with your name on it, and a place
+  in a queue with nothing to collect yet. Merging them into one table would
+  need a status column doing the explaining, which is more words than three
+  headings.
+
+  Every button here is a form and not a link. Each one changes state, and a
+  state change reachable by GET is a state change a crawler or a browser
+  prefetching a link can make on your behalf. The views back these buttons
+  define no get method at all, so such a request is answered with 405.
+
+  Each form carries a hidden next field naming this page, which is what
+  brings the browser back here afterwards. The view checks the value against
+  the current host before using it, so it cannot be turned into a redirect
+  off the site.
+{% endcomment %}
+
+{% block page_title %}My loans{% endblock %}
+
+{% block content %}
+  <header class="page-head">
+    <h1>My loans</h1>
+    <p class="lede">
+      {% comment %}
+        The cap is printed beside the count rather than the count on its own,
+        because "2 books" says nothing about whether a third is allowed. Both
+        numbers come from rules.py through the view, so this sentence cannot
+        fall out of step with the rule that enforces it.
+      {% endcomment %}
+      {{ loans|length }} of {{ loan_cap }} books out, and
+      {{ reservation_count }} of {{ reservation_cap }} places held in queues.
+    </p>
+
+    <p class="page-head__tools">
+      <a href="{% url 'circulation:history' %}">Borrowing history</a>
+      <a href="{% url 'catalog:book_list' %}">Find another book</a>
+    </p>
+  </header>
+
+  {% comment %}
+    Shown only when something is owed. A panel reading zero naira is a panel
+    that teaches people to stop reading panels.
+
+    The figure is the whole outstanding balance rather than only what the
+    loans below produced, so it matches what the desk will ask for. Its own
+    page lists the loans behind it.
+  {% endcomment %}
+  {% if fine_total %}
+    <aside class="panel panel--warning">
+      <h2 class="panel__title">You owe {{ fine_total|floatformat:2 }} naira</h2>
+      <p>
+        Fines are {{ fine_per_day|floatformat:2 }} naira for every day a book
+        is late, and are paid at the desk.
+        <a href="{% url 'circulation:history' %}">See what they are for</a>.
+      </p>
+    </aside>
+  {% endif %}
+
+  <section class="loan-section" aria-labelledby="loans-out">
+    <h2 id="loans-out">Books you have out</h2>
+
+    {% comment %}
+      The caption names the table for a screen reader, and scope on each
+      header cell is what ties a column of values to its heading, so somebody
+      moving cell by cell is told which column they are in.
+    {% endcomment %}
+    <table class="data-table">
+      <caption class="data-table__caption">
+        Your current loans, soonest due first
+      </caption>
+      <thead>
+        <tr>
+          <th scope="col">Title</th>
+          <th scope="col">Due back</th>
+          <th scope="col">State</th>
+          <th scope="col">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for loan in loans %}
+          <tr class="{% if loan.is_overdue %}is-overdue{% endif %}">
+            <th scope="row">
+              <a href="{{ loan.book.get_absolute_url }}">{{ loan.book.title }}</a>
+            </th>
+            <td>{{ loan.due_date|date:"j F Y" }}</td>
+            <td>
+              {% if loan.is_overdue %}
+                <span class="status status--out">
+                  {{ loan.days_overdue }} day{{ loan.days_overdue|pluralize }} late
+                </span>
+              {% else %}
+                <span class="status status--available">On loan</span>
+              {% endif %}
+            </td>
+            <td class="data-table__actions">
+              {% comment %}
+                The renew button is offered on every row, including rows
+                where it will be refused. Three separate rules can refuse a
+                renewal: the loan is already overdue, it has been renewed
+                its one allowed time, or somebody else is now waiting for
+                the book. All three live in services.py, and a template
+                that tried to predict them would be a fourth place stating
+                the same rules and the first one to disagree. So the button
+                is offered and the refusal explains itself.
+              {% endcomment %}
+              <form method="post"
+                    action="{% url 'circulation:renew' loan.pk %}">
+                {% csrf_token %}
+                <input type="hidden" name="next"
+                       value="{{ request.get_full_path }}">
+                <button type="submit" class="button button--small button--quiet">
+                  Renew
+                </button>
+              </form>
+
+              <form method="post"
+                    action="{% url 'circulation:return' loan.pk %}">
+                {% csrf_token %}
+                <input type="hidden" name="next"
+                       value="{{ request.get_full_path }}">
+                <button type="submit" class="button button--small">
+                  Return
+                </button>
+              </form>
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="4" class="empty-state">
+              <p>You have nothing out at the moment.</p>
+              <p>
+                <a href="{% url 'catalog:book_list' %}">Browse the shelves</a>
+                and borrow up to {{ loan_cap }} books at once.
+              </p>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  {% comment %}
+    A copy has come back and is being kept under this member's name. Shown
+    above the ordinary queue, because this is the one part of the page with a
+    deadline attached to it.
+
+    The hold time is printed to the minute, unlike a due date. A loan runs in
+    whole days on purpose, so that returning a book in the morning and in the
+    evening cost the same; a hold is a short courtesy window measured from
+    the moment the copy came back, and rounding it to a day would either give
+    away most of a day or take one away.
+  {% endcomment %}
+  {% if holds %}
+    <section class="loan-section" aria-labelledby="holds-heading">
+      <h2 id="holds-heading">Waiting for you at the desk</h2>
+      <p class="lede">
+        Collect these before the hold runs out. A copy not collected in time
+        passes to the next member in the queue.
+      </p>
+
+      <ul class="queue-list">
+        {% for hold in holds %}
+          <li class="queue-list__item">
+            <a href="{{ hold.book.get_absolute_url }}">{{ hold.book.title }}</a>
+            <span class="status status--available">
+              Held until {{ hold.expires_date|date:"j F Y" }}
+              at {{ hold.expires_date|time:"H:i" }}
+            </span>
+
+            <form method="post"
+                  action="{% url 'circulation:cancel_reservation' hold.pk %}">
+              {% csrf_token %}
+              <input type="hidden" name="next"
+                     value="{{ request.get_full_path }}">
+              <button type="submit" class="button button--small button--quiet">
+                I no longer want it
+              </button>
+            </form>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
+  {% comment %}
+    A hold whose window has closed, still sitting in the member's list.
+
+    This section exists because expiry is swept rather than scheduled.
+    expire_lapsed_holds runs when somebody borrows or reserves the same
+    title, so between the moment a window closes and the next such action
+    the row is still stored as notified. has_expired reads the clock instead
+    of the stored status, so this page can say what is actually true.
+
+    Nothing here writes. A page that quietly changed records while being
+    looked at would mean a refresh was an action, and a reader could not tell
+    what they had caused. The button below is the member choosing to act.
+  {% endcomment %}
+  {% if lapsed %}
+    <section class="loan-section" aria-labelledby="lapsed-heading">
+      <h2 id="lapsed-heading">Not collected in time</h2>
+      <p class="lede">
+        The hold on these ran out, so the copy passes to the next member
+        waiting. Clearing one here frees a place in your
+        {{ reservation_cap }} and you are welcome to join the queue again.
+      </p>
+
+      <ul class="queue-list">
+        {% for item in lapsed %}
+          <li class="queue-list__item is-lapsed">
+            <a href="{{ item.book.get_absolute_url }}">{{ item.book.title }}</a>
+            <span class="status status--out">
+              Hold ran out {{ item.expires_date|date:"j F Y" }}
+              at {{ item.expires_date|time:"H:i" }}
+            </span>
+
+            <form method="post"
+                  action="{% url 'circulation:cancel_reservation' item.pk %}">
+              {% csrf_token %}
+              <input type="hidden" name="next"
+                     value="{{ request.get_full_path }}">
+              <button type="submit" class="button button--small button--quiet">
+                Clear this
+              </button>
+            </form>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
+  {% comment %}
+    Places in a queue with nothing to collect yet. Always shown, even when
+    empty, because this is the section that explains what reserving is for
+    and a member with none should still be told how to get one.
+
+    queue_position is a method rather than a property, and calling it once per
+    row costs one COUNT query per row. That is affordable here only because
+    the cap of three bounds this list at three rows. It would not be
+    affordable on a librarian's page listing every queue in the library, which
+    is why no such page calls it.
+  {% endcomment %}
+  <section class="loan-section" aria-labelledby="waiting-heading">
+    <h2 id="waiting-heading">Books you are waiting for</h2>
+
+    {% if waiting %}
+      <ul class="queue-list">
+        {% for item in waiting %}
+          <li class="queue-list__item">
+            <a href="{{ item.book.get_absolute_url }}">{{ item.book.title }}</a>
+            <span class="status status--reserved">
+              Number {{ item.queue_position }} in the queue
+            </span>
+            <span class="queue-list__note">
+              Joined {{ item.reserved_date|date:"j F Y" }}
+            </span>
+
+            <form method="post"
+                  action="{% url 'circulation:cancel_reservation' item.pk %}">
+              {% csrf_token %}
+              <input type="hidden" name="next"
+                     value="{{ request.get_full_path }}">
+              <button type="submit" class="button button--small button--quiet">
+                Leave the queue
+              </button>
+            </form>
+          </li>
+        {% endfor %}
+      </ul>
+
+      <p class="panel__footnote">
+        {% comment %}
+          Said once here rather than on every row, since the window is the
+          same length for everybody. hold_days comes from rules.py through
+          the view, so this number cannot drift from the one enforced.
+        {% endcomment %}
+        When a copy comes back it is held under your name for
+        {{ hold_days }} day{{ hold_days|pluralize }}, and it appears at the
+        top of this page.
+      </p>
+    {% else %}
+      <p class="empty-state">
+        You are not in any queues. When every copy of a book is out, you can
+        reserve it from
+        <a href="{% url 'catalog:book_list' %}">its page in the catalogue</a>
+        and be told when one comes back.
+      </p>
+    {% endif %}
+  </section>
+
+
+
+{% endblock %}

@@ -21,6 +21,7 @@ from django.utils.text import slugify
 from .models import Book, Category, Review
 from .validators import bare_isbn
 
+
 class BookForm(forms.ModelForm):
     """
     Add a book to the catalogue, or correct one already in it.

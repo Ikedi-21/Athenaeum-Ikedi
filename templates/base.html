@@ -63,6 +63,28 @@
             <a href="{% url 'dashboard:home' %}">Dashboard</a>
 
             {% comment %}
+              The role decides which of the two circulation links appears,
+              because the two pages answer different questions. A member
+              wants their own loans; somebody at the desk wants every loan in
+              the library. Offering both to everybody would mean offering
+              each of them a page that answers with a 403.
+
+              These are conveniences and not guards. LoanListView is behind
+              StudentRequiredMixin and the desk pages are behind
+              LibrarianRequiredMixin, so hiding a link changes what is easy
+              to find and nothing about what is permitted. A nav that was
+              the only thing keeping students off the desk would be no
+              protection at all, since the address is guessable.
+            {% endcomment %}
+            {% if user.is_student %}
+              <a href="{% url 'circulation:loans' %}">My loans</a>
+            {% endif %}
+
+            {% if user.is_librarian %}
+              <a href="{% url 'circulation:desk' %}">Loan desk</a>
+            {% endif %}
+
+            {% comment %}
               The role is read through the is_librarian property on the
               user model rather than by comparing the stored string, so
               the template does not need to know what the database holds.

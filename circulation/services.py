@@ -41,6 +41,7 @@ from dashboard.models import Notification
 
 from . import exceptions, rules
 from .models import (
+    LIVE_RESERVATION_STATUSES,
     AuditAction,
     AuditLog,
     BorrowRecord,
@@ -179,7 +180,7 @@ def active_reservations(student):
     """Every queue this student is currently waiting in."""
     return Reservation.objects.filter(
         student=student,
-        status__in=[ReservationStatus.WAITING, ReservationStatus.NOTIFIED],
+        status__in=LIVE_RESERVATION_STATUSES,
     )
 
 
@@ -224,7 +225,7 @@ def _anyone_waiting(book, *, other_than=None):
     """
     queryset = Reservation.objects.filter(
         book=book,
-        status__in=[ReservationStatus.WAITING, ReservationStatus.NOTIFIED],
+        status__in=LIVE_RESERVATION_STATUSES,
     )
     if other_than is not None:
         queryset = queryset.exclude(student=other_than)

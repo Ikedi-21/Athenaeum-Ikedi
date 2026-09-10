@@ -103,17 +103,74 @@
       {% endif %}
 
       {% comment %}
-        Borrowing is not wired up yet. The circulation app has no URL
-        patterns at this point, so a link to a borrow view would raise
-        NoReverseMatch and take this whole page down with it. The state is
-        shown honestly instead, and the button arrives with the circulation
-        task.
+        Borrowing and reserving, for a signed in student.
+
+        Which of the two buttons appears is decided by whether a copy is on
+        the shelf, and nothing else. Every other rule that could refuse the
+        press stays out of this template on purpose: the cap of three loans,
+        the copy already borrowed, the place already held in this queue, the
+        copies being kept for members further up it. All of those live in
+        services.py, and a template that tried to anticipate them would be a
+        second statement of the same rules and the first one to fall out of
+        step with them. The refusal comes back as a message that says which
+        rule was hit, which is more use than a hidden button.
+
+        Both are forms rather than links. Each one changes state, and a state
+        change reachable by GET is a state change a crawler or a browser
+        prefetching a link can make on somebody's behalf. BorrowView and
+        ReserveView define no get method at all, so such a request is
+        answered with 405.
+
+        No hidden next field here, unlike the loans page. Both views send the
+        reader back to this page anyway, which is where they will want to be:
+        the copy count and the status line above will have changed.
       {% endcomment %}
       <div class="book-detail__action">
         {% if book.is_available %}
           <p class="status status--available">Available to borrow</p>
         {% else %}
           <p class="status status--out">Every copy is currently on loan</p>
+        {% endif %}
+
+        {% if user.is_authenticated and user.is_student %}
+          {% comment %}
+            Neither footnote states a number, and that is deliberate rather
+            than vague. BookDetailView supplies no circulation figures, and
+            printing the loan period or the hold window here would mean
+            either importing rules.py into the catalogue or typing the
+            numbers into prose where nothing keeps them true.
+
+            Both views answer with the real figures at the moment they are
+            asked. Borrowing replies with the actual date the book is due,
+            and reserving replies with the place in the queue and the length
+            of the hold. That is the moment those numbers matter, and it is
+            the only place they are worked out.
+          {% endcomment %}
+          {% if book.is_available %}
+            <form method="post"
+                  action="{% url 'circulation:borrow' book.pk %}">
+              {% csrf_token %}
+              <button type="submit" class="button">Borrow this book</button>
+            </form>
+            <p class="panel__footnote">
+              The due date is set when you borrow, and a loan can be renewed
+              once if nobody else is waiting.
+            </p>
+          {% else %}
+            <form method="post"
+                  action="{% url 'circulation:reserve' book.pk %}">
+              {% csrf_token %}
+              <button type="submit" class="button">Join the queue</button>
+            </form>
+            <p class="panel__footnote">
+              You will be told your place in the queue. When a copy comes
+              back it is held under your name at the desk for a few days.
+            </p>
+          {% endif %}
+
+          <p class="book-detail__tools">
+            <a href="{% url 'circulation:loans' %}">My loans</a>
+          </p>
         {% endif %}
 
         {% if not user.is_authenticated %}

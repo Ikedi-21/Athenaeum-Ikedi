@@ -27,7 +27,7 @@ from django.views.generic import CreateView, DetailView, ListView, UpdateView
 from django.views.generic.detail import SingleObjectMixin
 
 from accounts.mixins import LibrarianRequiredMixin
-from circulation.models import Reservation, ReservationStatus
+from circulation.models import LIVE_RESERVATION_STATUSES, Reservation
 from circulation.services import cancel_reservation, refresh_queue
 
 from .forms import BookForm, CategoryForm
@@ -239,17 +239,14 @@ class BookWithdrawView(LibrarianRequiredMixin, DetailView):
         Everybody currently in this book's queue, whether they are simply
         waiting or already holding a copy.
 
-        Those two statuses are what "in the queue" means, and the same pair
-        appears in circulation's own queue helpers and in the partial unique
-        constraint on the table. Three statements of one rule is one too
-        many, and a shared constant in circulation would be the tidy fix.
+        Those two statuses are what "in the queue" means, and the definition
+        now lives in circulation as LIVE_RESERVATION_STATUSES so that this
+        page, the queue helpers in services.py and the reservation model
+        itself cannot disagree about who is in a queue.
         """
         return Reservation.objects.filter(
             book=self.object,
-            status__in=[
-                ReservationStatus.WAITING,
-                ReservationStatus.NOTIFIED,
-            ],
+            status__in=LIVE_RESERVATION_STATUSES,
         ).select_related("student")
 
     def get_context_data(self, **kwargs):

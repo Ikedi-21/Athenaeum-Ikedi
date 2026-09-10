@@ -39,6 +39,23 @@ class ReservationStatus(models.TextChoices):
     CANCELLED = "cancelled", "Cancelled"
 
 
+# What "in the queue" means, in one place.
+#
+# Those two statuses together are the definition of a live reservation: one
+# person is waiting their turn, the other has a copy being held for them, and
+# both are ahead of anybody joining now. The pair is asked about often enough
+# that spelling it out at each site meant five copies of one rule, and a
+# sixth would have arrived with the circulation views.
+#
+# A list rather than a tuple because every use is a __in lookup, and because
+# the Meta constraint below could adopt it without the applied migration
+# looking out of date.
+LIVE_RESERVATION_STATUSES = [
+    ReservationStatus.WAITING,
+    ReservationStatus.NOTIFIED,
+]
+
+
 class AuditAction(models.TextChoices):
     """
     The set of events worth recording.
@@ -210,6 +227,7 @@ class BorrowRecord(models.Model):
             return 0
         return (timezone.localdate() - self.due_date).days
 
+
 class Reservation(models.Model):
     """
     A student's place in the queue for a book that has no copies left.
@@ -265,6 +283,12 @@ class Reservation(models.Model):
             # One live reservation per student per book. Restricted to the
             # two active states so that a student whose earlier hold
             # expired, or who cancelled, can join the queue again.
+            #
+            # Spelled out rather than using LIVE_RESERVATION_STATUSES, which
+            # is the same pair. Anything inside Meta is a migration question,
+            # and this one is not worth asking: swapping in the constant
+            # changes nothing the database can see and nothing that
+            # makemigrations would record.
             models.UniqueConstraint(
                 fields=["student", "book"],
                 condition=models.Q(
@@ -293,10 +317,11 @@ class Reservation(models.Model):
     @property
     def is_active(self):
         """True while this reservation still entitles the student to a copy."""
-        return self.status in {
-            ReservationStatus.WAITING,
-            ReservationStatus.NOTIFIED,
-        }
+        # The shared list, so this cannot disagree with the queue queries in
+        # services.py about what being in the queue means. A set would read
+        # marginally faster on two items and would be a second spelling of
+        # the same rule, which costs more than it saves.
+        return self.status in LIVE_RESERVATION_STATUSES
 
     @property
     def has_expired(self):
@@ -328,6 +353,7 @@ class Reservation(models.Model):
             reserved_date__lt=self.reserved_date,
         ).count()
         return ahead + 1
+
 
 class AuditLog(models.Model):
     """
