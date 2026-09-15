@@ -15,7 +15,7 @@ its success_url supplied explicitly below.
 from django.contrib.auth import views as auth_views
 from django.urls import path, reverse_lazy
 
-from . import views
+from . import manage_views, settings_views, views
 
 app_name = "accounts"
 
@@ -65,4 +65,24 @@ urlpatterns = [
         auth_views.PasswordResetCompleteView.as_view(),
         name="password_reset_complete",
     ),
+    # ---------------------------------------------------------------- #
+    # Librarian: Student Member Directory                              #
+    # ---------------------------------------------------------------- #
+    path(
+        "manage/students/",
+        manage_views.StudentListView.as_view(),
+        name="student_list",
+    ),
+    path(
+        "manage/students/<int:pk>/",
+        manage_views.StudentDetailView.as_view(),
+        name="student_detail",
+    ),
+    # ---------------------------------------------------------------- #
+    # Role-Based Settings & Legal Governance                           #
+    # ---------------------------------------------------------------- #
+    path("settings/", settings_views.SettingsView.as_view(), name="settings"),
+    path("privacy/", settings_views.PrivacyPolicyView.as_view(), name="privacy"),
+    path("terms/", settings_views.TermsOfServiceView.as_view(), name="terms"),
+    path("security/", settings_views.SecurityOverviewView.as_view(), name="security"),
 ]

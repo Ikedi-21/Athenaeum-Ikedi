@@ -32,7 +32,7 @@ from accounts.mixins import LibrarianRequiredMixin
 
 from . import rules, services
 from .exceptions import CirculationError
-from .models import BorrowRecord
+from .models import AuditAction, AuditLog, BorrowRecord
 from .views import CirculationActionView, money
 
 # The loan desk filter, written as data in the manner of SORT_OPTIONS in
@@ -403,3 +403,40 @@ class MarkFinePaidView(LibrarianRequiredMixin, CirculationActionView):
                 f"{record.book.title} is recorded as settled.",
             )
         return redirect(self.redirect_target(request, fallback))
+
+
+class AuditLogListView(LibrarianRequiredMixin, ListView):
+    """
+    Searchable and filterable audit trail browser for librarians.
+    """
+
+    model = AuditLog
+    template_name = "circulation/audit_log.html"
+    context_object_name = "logs"
+    paginate_by = 25
+
+    def get_queryset(self):
+        qs = AuditLog.objects.select_related("user").order_by("-timestamp")
+        action = self.request.GET.get("action", "").strip()
+        if action:
+            qs = qs.filter(action=action)
+
+        query = self.request.GET.get("q", "").strip()
+        if query:
+            qs = qs.filter(
+                Q(target__icontains=query)
+                | Q(detail__icontains=query)
+                | Q(user__username__icontains=query)
+                | Q(user__first_name__icontains=query)
+                | Q(user__last_name__icontains=query)
+            )
+        return qs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["actions"] = AuditAction.choices
+        context["selected_action"] = self.request.GET.get("action", "")
+        context["query"] = self.request.GET.get("q", "")
+        context["total_log_count"] = AuditLog.objects.count()
+        return context
+

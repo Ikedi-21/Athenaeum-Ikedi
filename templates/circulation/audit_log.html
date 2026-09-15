@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block page_title %}Audit Trail{% endblock %}
+{% block page_description %}Immutable log of all catalogue, circulation, and account transactions in Athenaeum Ikedi.{% endblock %}
+
+{% block content %}
+<div class="audit-log-page">
+  <header class="page-head page-head--with-action">
+    <div>
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="{% url 'dashboard:home' %}">Dashboard</a>
+        <span class="breadcrumb__sep">/</span>
+        <span aria-current="page">Audit Trail</span>
+      </nav>
+      <h1>System Audit Trail</h1>
+      <p class="lede">
+        Forensic ledger containing {{ total_log_count }} permanent transaction record{{ total_log_count|pluralize }}.
+      </p>
+    </div>
+
+    <div class="page-head__action button-group">
+      <a href="{% url 'circulation:desk' %}" class="button button--secondary">Loan Desk</a>
+      <a href="{% url 'dashboard:home' %}" class="button button--secondary">Dashboard</a>
+    </div>
+  </header>
+
+  {# FILTER AND SEARCH #}
+  <div class="filter-bar">
+    <form method="get" class="search-form" role="search">
+      <div class="search-input-group">
+        <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="search" name="q" value="{{ query }}" placeholder="Search by target book, user, or details..." class="form-input">
+        {% if selected_action %}
+          <input type="hidden" name="action" value="{{ selected_action }}">
+        {% endif %}
+        <button type="submit" class="button button--primary button--small">Filter</button>
+      </div>
+      {% if query or selected_action %}
+        <a href="{% url 'circulation:audit_log' %}" class="action-link text-small">Clear filters</a>
+      {% endif %}
+    </form>
+
+    <div class="filter-dropdown-wrapper">
+      <form method="get" id="action-filter-form">
+        {% if query %}
+          <input type="hidden" name="q" value="{{ query }}">
+        {% endif %}
+        <label for="action-select" class="visually-hidden">Filter by Action</label>
+        <select name="action" id="action-select" class="form-select" onchange="this.form.submit()">
+          <option value="">All Action Types</option>
+          {% for val, label in actions %}
+            <option value="{{ val }}" {% if selected_action == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </form>
+    </div>
+  </div>
+
+  {% if logs %}
+    <div class="table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Actor</th>
+            <th>Action</th>
+            <th>Target</th>
+            <th>Details</th>
+            <th>IP Address</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for entry in logs %}
+            <tr>
+              <td>
+                <time class="font-mono text-small" datetime="{{ entry.timestamp|date:'c' }}">
+                  {{ entry.timestamp|date:"Y-m-d H:i:s" }}
+                </time>
+              </td>
+              <td>
+                {% if entry.user %}
+                  <strong>{{ entry.user.get_full_name|default:entry.user.username }}</strong>
+                  <div class="text-muted text-small font-mono">({{ entry.user.get_role_display }})</div>
+                {% else %}
+                  <span class="text-muted">System / Deleted</span>
+                {% endif %}
+              </td>
+              <td>
+                <span class="badge badge--small badge--outline badge--action-{{ entry.action }}">
+                  {{ entry.get_action_display }}
+                </span>
+              </td>
+              <td>
+                <strong>{{ entry.target }}</strong>
+              </td>
+              <td class="text-small">
+                {{ entry.detail|default:"&mdash;" }}
+              </td>
+              <td class="font-mono text-small text-muted">
+                {{ entry.ip_address|default:"&mdash;" }}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if is_paginated %}
+      <nav class="pagination" aria-label="Audit log pagination">
+        {% if page_obj.has_previous %}
+          <a class="button button--small button--secondary" href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query }}{% endif %}{% if selected_action %}&action={{ selected_action }}{% endif %}">&larr; Previous</a>
+        {% endif %}
+        <span class="pagination__current">Page {{ page_obj.number }} of {{ paginator.num_pages }}</span>
+        {% if page_obj.has_next %}
+          <a class="button button--small button--secondary" href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query }}{% endif %}{% if selected_action %}&action={{ selected_action }}{% endif %}">Next &rarr;</a>
+        {% endif %}
+      </nav>
+    {% endif %}
+
+  {% else %}
+    <div class="empty-state">
+      <div class="empty-state__icon">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+      </div>
+      <h3>No audit events found</h3>
+      <p>No log records match your current filter criteria.</p>
+      <div class="empty-state__action">
+        <a href="{% url 'circulation:audit_log' %}" class="button button--secondary">Reset filters</a>
+      </div>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

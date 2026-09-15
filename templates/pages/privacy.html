@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block page_title %}Privacy Policy{% endblock %}
+{% block page_description %}Privacy Policy and Data Governance standards for Athenaeum Ikedi.{% endblock %}
+
+{% block content %}
+<div class="legal-page container">
+  <div class="page-head">
+    <div class="breadcrumb">
+      <a href="{% url 'home' %}">Home</a>
+      <span class="breadcrumb__sep">/</span>
+      <span>Legal & Governance</span>
+      <span class="breadcrumb__sep">/</span>
+      <span>Privacy Policy</span>
+    </div>
+    <h1>Privacy Policy & Data Protection</h1>
+    <p class="lede">How Athenaeum Ikedi handles member records, academic loan histories, and security telemetry.</p>
+    <p class="text-small text-muted">Effective Date: September 2026 &bull; Version 2.4 Enterprise</p>
+  </div>
+
+  <div class="legal-content">
+    <section class="panel">
+      <h2>1. Information We Collect</h2>
+      <p>Athenaeum Ikedi maintains only the data strictly necessary for providing library circulation, reservation management, and cataloguing services:</p>
+      <ul>
+        <li><strong>Identity & Account Credentials:</strong> University username, verified institutional email address, full legal name, and role attribution (Student or Librarian).</li>
+        <li><strong>Circulation & Borrowing Records:</strong> Chronological records of borrowed titles, return dates, renewals, waitlist reservations, and accrued late penalties.</li>
+        <li><strong>Security & Authentication Telemetry:</strong> Session authentication timestamps, IP addresses for rate-limiting, and immutable audit logs of administrative changes.</li>
+      </ul>
+    </section>
+
+    <section class="panel">
+      <h2>2. Use of Information</h2>
+      <p>Collected member data is processed exclusively for institutional academic operations:</p>
+      <ul>
+        <li>Transacting checkouts, processing returns, and calculating fair-use late fees.</li>
+        <li>Notifying borrowers regarding approaching loan expiration and reservation availability.</li>
+        <li>Maintaining institutional forensic accountability via an immutable audit trail.</li>
+      </ul>
+      <p>We do not sell, license, or monetize patron information. No third-party commercial trackers, advertising beacons, or external CDN cookies are loaded on this platform.</p>
+    </section>
+
+    <section class="panel">
+      <h2>3. Data Retention & Erasure</h2>
+      <p>Borrowing histories are retained during an active student enrolment. Upon graduation or account deactivation by an institutional administrator, personal identifiable information (PII) is anonymized in accordance with university record policies, while circulation statistics remain aggregated for institutional collection development.</p>
+    </section>
+
+    <section class="panel">
+      <h2>4. Security Controls</h2>
+      <p>All data in transit is protected using TLS 1.3 encryption. Passwords are cryptographically hashed using PBKDF2 with SHA-256 and salted. Our strict Content Security Policy (CSP) prohibits arbitrary external script execution.</p>
+    </section>
+  </div>
+</div>
+{% endblock %}

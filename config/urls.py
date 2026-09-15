@@ -18,7 +18,7 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.contrib.auth.decorators import login_not_required
 from django.urls import include, path
-from django.views.generic import TemplateView
+from django.views.generic import RedirectView, TemplateView
 from django.views.static import serve
 
 
@@ -61,8 +61,14 @@ urlpatterns = [
     ),
     path("accounts/", include("accounts.urls")),
     path("books/", include("catalog.urls")),
+    path("catalog/", RedirectView.as_view(url="/books/", permanent=True)),
     path("loans/", include("circulation.urls")),
     path("dashboard/", include("dashboard.urls")),
+    # Top-level direct aliases
+    path("settings/", RedirectView.as_view(url="/accounts/settings/", permanent=False), name="settings"),
+    path("privacy/", RedirectView.as_view(url="/accounts/privacy/", permanent=False), name="privacy"),
+    path("terms/", RedirectView.as_view(url="/accounts/terms/", permanent=False), name="terms"),
+    path("security/", RedirectView.as_view(url="/accounts/security/", permanent=False), name="security"),
 ]
 
 # Uploaded covers, development only. static() checks DEBUG itself and

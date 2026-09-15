@@ -1,0 +1,94 @@
+{% load static %}
+<footer class="site-footer" role="contentinfo">
+  <div class="container site-footer__container">
+    <div class="footer-grid">
+      <!-- Col 1: Brand & Status -->
+      <div class="footer-col footer-col--brand">
+        <a class="footer-brand" href="{% url 'home' %}">
+          <img src="{% static 'images/logo-horizontal.png' %}" alt="Athenaeum Ikedi" height="34" class="footer-logo">
+        </a>
+        <p class="footer-tagline">
+          Enterprise academic library management system. Engineered for meticulous circulation control, forensic audit accountability, and scholarly resource curation.
+        </p>
+        <div class="system-status-pill">
+          <span class="status-pulse-dot" aria-hidden="true"></span>
+          <span class="status-text font-bold">All Systems Operational</span>
+          <span class="status-meta text-muted">&bull; 99.98% Uptime</span>
+        </div>
+      </div>
+
+      <!-- Col 2: Platform Navigation -->
+      <div class="footer-col">
+        <h4 class="footer-heading">Platform</h4>
+        <ul class="footer-links">
+          <li><a href="{% url 'home' %}">Home & Discovery</a></li>
+          <li><a href="{% url 'catalog:book_list' %}">Library Catalogue</a></li>
+          {% if user.is_authenticated %}
+            <li><a href="{% url 'dashboard:home' %}">Patron Dashboard</a></li>
+            {% if user.is_student %}
+              <li><a href="{% url 'circulation:loans' %}">My Borrowed Titles</a></li>
+            {% endif %}
+            {% if user.is_librarian %}
+              <li><a href="{% url 'circulation:desk' %}">Loan & Circulation Desk</a></li>
+              <li><a href="{% url 'accounts:student_list' %}">Student Directory</a></li>
+              <li><a href="{% url 'catalog:book_manage' %}">Catalogue Management</a></li>
+            {% endif %}
+            <li><a href="{% url 'accounts:settings' %}">Account Settings</a></li>
+          {% else %}
+            <li><a href="{% url 'accounts:login' %}">Sign In</a></li>
+            <li><a href="{% url 'accounts:register' %}">Register Student Account</a></li>
+          {% endif %}
+        </ul>
+      </div>
+
+      <!-- Col 3: Legal & Governance -->
+      <div class="footer-col">
+        <h4 class="footer-heading">Governance</h4>
+        <ul class="footer-links">
+          <li><a href="{% url 'accounts:privacy' %}">Privacy Policy</a></li>
+          <li><a href="{% url 'accounts:terms' %}">Terms of Service</a></li>
+          <li><a href="{% url 'accounts:security' %}">Security & Cryptography</a></li>
+          <li><a href="{% url 'accounts:terms' %}#compliance">Circulation Regulations</a></li>
+          <li><a href="{% url 'accounts:privacy' %}#retention">Data Retention Rules</a></li>
+        </ul>
+      </div>
+
+      <!-- Col 4: Operations & System -->
+      <div class="footer-col">
+        <h4 class="footer-heading">Enterprise</h4>
+        <ul class="footer-links">
+          {% if user.is_authenticated and user.is_librarian %}
+            <li><a href="{% url 'circulation:audit_log' %}">Forensic Audit Log</a></li>
+            <li><a href="{% url 'accounts:settings' %}?tab=admin_config">System Configuration</a></li>
+            <li><a href="{% url 'accounts:settings' %}?tab=admin_billing">Plan & Resource Usage</a></li>
+          {% endif %}
+          {% if user.is_authenticated %}
+            <li><a href="{% url 'dashboard:notifications' %}">Notification Center</a></li>
+          {% endif %}
+          <li><a href="{% url 'accounts:security' %}#architecture">Strict CSP Standards</a></li>
+          <li class="footer-version-tag">Release v2.4 Enterprise</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Bottom sub-footer -->
+    <div class="footer-bottom">
+      <div class="footer-bottom__copy">
+        <p>&copy; {% now "Y" %} Athenaeum Ikedi. All rights reserved.</p>
+        <p class="footer-bottom__meta text-muted text-small">Self-hosted infrastructure &bull; Zero third-party trackers &bull; Nonce-authenticated strict CSP</p>
+      </div>
+
+      <div class="footer-bottom__socials" aria-label="System links">
+        <a href="{% url 'catalog:book_list' %}" class="footer-icon-link" title="Catalogue Shelves" aria-label="Catalogue">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+        </a>
+        <a href="{% url 'accounts:security' %}" class="footer-icon-link" title="Security Standards" aria-label="Security">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+        </a>
+        <a href="{% url 'accounts:settings' %}" class="footer-icon-link" title="System Settings" aria-label="Settings">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        </a>
+      </div>
+    </div>
+  </div>
+</footer>

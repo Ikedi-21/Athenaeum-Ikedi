@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block page_title %}Security & Compliance Overview{% endblock %}
+{% block page_description %}Security architecture, audit standards, and compliance overview for Athenaeum Ikedi.{% endblock %}
+
+{% block content %}
+<div class="legal-page container">
+  <div class="page-head">
+    <div class="breadcrumb">
+      <a href="{% url 'home' %}">Home</a>
+      <span class="breadcrumb__sep">/</span>
+      <span>Legal & Governance</span>
+      <span class="breadcrumb__sep">/</span>
+      <span>Security Overview</span>
+    </div>
+    <h1>Security Architecture & Compliance Standards</h1>
+    <p class="lede">Enterprise defense-in-depth, cryptographic protection, and audit integrity.</p>
+    <p class="text-small text-muted">Audited: September 2026 &bull; Enterprise Compliance Grade A</p>
+  </div>
+
+  <div class="legal-content">
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-card__header">
+          <span class="stat-card__label">Encryption</span>
+          <span class="stat-card__icon stat-card__icon--emerald">&#128274;</span>
+        </div>
+        <div class="stat-card__value">TLS 1.3</div>
+        <div class="stat-card__subtext">Strict transport security (HSTS)</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card__header">
+          <span class="stat-card__label">Content Security</span>
+          <span class="stat-card__icon stat-card__icon--blue">&#128737;</span>
+        </div>
+        <div class="stat-card__value">Strict CSP</div>
+        <div class="stat-card__subtext">Nonce-authenticated script isolation</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card__header">
+          <span class="stat-card__label">Audit Logging</span>
+          <span class="stat-card__icon stat-card__icon--amber">&#128221;</span>
+        </div>
+        <div class="stat-card__value">Immutable</div>
+        <div class="stat-card__subtext">Forensic accountability trail</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-card__header">
+          <span class="stat-card__label">Credential Hashing</span>
+          <span class="stat-card__icon stat-card__icon--rose">&#9881;</span>
+        </div>
+        <div class="stat-card__value">PBKDF2</div>
+        <div class="stat-card__subtext">Salted SHA-256 derivation</div>
+      </div>
+    </div>
+
+    <section class="panel">
+      <h2>1. Content Security Policy & Zero-CDN Architecture</h2>
+      <p>Athenaeum Ikedi implements an uncompromising self-hosted asset policy. No external scripts, remote web fonts, analytics beacons, or third-party stylesheets are permissible under our active <code>SECURE_CSP</code> configuration.</p>
+    </section>
+
+    <section class="panel">
+      <h2>2. Role-Based Access Control (RBAC)</h2>
+      <p>Privileged routes—including catalog addition, copy withdrawal, student record inspection, fines settlement, and platform parameters—are protected via non-bypassable server-side mixins (<code>LibrarianRequiredMixin</code>). Superuser permissions automatically synchronize with staff privileges.</p>
+    </section>
+
+    <section class="panel">
+      <h2>3. Forensic Audit Trail</h2>
+      <p>Every checkout, renewal, return, fee settlement, book withdrawal, and administrative role change triggers an append-only event recorded in the institutional <code>AuditLog</code> database table with user, timestamp, target entity, and contextual metadata.</p>
+    </section>
+  </div>
+</div>
+{% endblock %}

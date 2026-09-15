@@ -1,8 +1,5 @@
 """
-URL patterns for the dashboard.
-
-dashboard:home is what LOGIN_REDIRECT_URL in settings.py points at, so
-this name has to resolve for a login to complete.
+URL patterns for the dashboard app.
 """
 
 from django.urls import path
@@ -13,4 +10,15 @@ app_name = "dashboard"
 
 urlpatterns = [
     path("", views.home, name="home"),
+    path("notifications/", views.notifications_list, name="notifications"),
+    path(
+        "notifications/<int:pk>/read/",
+        views.mark_notification_read,
+        name="notification_read",
+    ),
+    path(
+        "notifications/read-all/",
+        views.mark_all_notifications_read,
+        name="notifications_read_all",
+    ),
 ]

@@ -1,98 +1,222 @@
 """
-The user model for Athenaeum Ikedi.
-
-Django's built in User class is replaced here rather than paired with a
-separate profile table. That way a role check needs no join, and no
-signal has to keep a second row in step with the first.
+Catalogue models: the categories books are filed under, the books
+themselves, and the reviews students leave on them.
 """
 
-from django.contrib.auth.models import AbstractUser, UserManager
+from django.conf import settings
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from django.urls import reverse
+from django.utils.text import slugify
+
+from .validators import validate_isbn
 
 
-class LibraryUserManager(UserManager):
+class Category(models.Model):
     """
-    Standard Django user manager with one change, described below.
-    """
+    A subject heading a book is filed under, such as Fiction or Computer
+    Science.
 
-    def create_superuser(self, username, email=None, password=None, **extra_fields):
-        """
-        Force the librarian role on any superuser created from the
-        command line.
-
-        Without this, createsuperuser would produce an account holding
-        the default student role, and our own librarian_required
-        decorator would then refuse it entry to the very pages it was
-        created to manage. setdefault is used rather than a plain
-        assignment so an explicit role passed by a caller still wins.
-        """
-        extra_fields.setdefault("role", User.Role.LIBRARIAN)
-        return super().create_superuser(username, email, password, **extra_fields)
-
-
-class User(AbstractUser):
-    """
-    A library member: either a student who borrows books, or a librarian
-    who manages the catalogue.
+    This is a table rather than a set of choices on Book so that a
+    librarian can add or rename a heading without a code change and a
+    migration, and so that category pages can have their own URLs.
     """
 
-    class Role(models.TextChoices):
-        # The first value in each pair is what the database stores, the
-        # second is the label shown to a human.
-        STUDENT = "student", "Student"
-        LIBRARIAN = "librarian", "Librarian"
+    name = models.CharField(max_length=100, unique=True)
 
-    role = models.CharField(
-        max_length=20,
-        choices=Role.choices,
-        # Every new account is a student. Defaulting the other way would
-        # mean a single forgotten field hands out librarian powers, so the
-        # safe value is the default and promotion is deliberate.
-        default=Role.STUDENT,
-        help_text="Students borrow books. Librarians manage the catalogue.",
+    # Used in the URL instead of the numeric id, so a category page reads
+    # as /catalog/category/computer-science/ rather than ?category=3.
+    # Left blank on the form because save() fills it in from the name.
+    slug = models.SlugField(
+        max_length=120,
+        unique=True,
+        blank=True,
+        help_text="Leave blank and it will be generated from the name.",
     )
 
-    # AbstractUser leaves email optional and allows duplicates. A library
-    # needs a reliable way to reach a borrower about an overdue book, and
-    # password reset only works if an address identifies one account, so
-    # it is required and unique here.
-    email = models.EmailField(unique=True)
-
-    # Attach the manager defined above so createsuperuser behaves.
-    objects = LibraryUserManager()
+    description = models.TextField(blank=True)
 
     class Meta:
-        # Alphabetical by default, which is what the librarian's list of
-        # students should look like without every view having to say so.
-        ordering = ["username"]
+        ordering = ["name"]
+        # Without this Django's admin would label the section "Categorys".
+        verbose_name_plural = "categories"
 
     def __str__(self):
+        """Shown in dropdowns, in the admin and anywhere a category prints."""
+        return self.name
+
+    def save(self, *args, **kwargs):
         """
-        Shown in the admin, in form dropdowns, and anywhere a user object
-        is printed. Falls back to the username when no name was given.
+        Generate the slug from the name the first time the row is saved.
+
+        The check means an existing slug is never silently rewritten, which
+        matters because a slug that changes breaks every link and bookmark
+        already pointing at the old one.
         """
-        return f"{self.get_full_name() or self.username} ({self.get_role_display()})"
+        if not self.slug:
+            self.slug = slugify(self.name)
+        super().save(*args, **kwargs)
+
+    def get_absolute_url(self):
+        """The canonical page for this category."""
+        return reverse("catalog:category_detail", kwargs={"slug": self.slug})
+
+
+class Book(models.Model):
+    """
+    A title the library holds, along with how many copies exist and how
+    many of them are currently on the shelf.
+    """
+
+    # db_index helps the default ordering by title below. It does not
+    # speed up the search box, because a LIKE pattern that starts with a
+    # wildcard cannot use a B-tree index at all.
+    title = models.CharField(max_length=200, db_index=True)
+
+    author = models.CharField(max_length=200)
+
+    isbn = models.CharField(
+        "ISBN",
+        max_length=17,
+        unique=True,
+        # 17 characters covers a 13 digit ISBN written with four hyphens.
+        validators=[validate_isbn],
+        help_text="10 or 13 digits. Hyphens are optional.",
+    )
+
+    # PROTECT means deleting a category that still has books raises an
+    # error instead of quietly deleting the books with it. CASCADE here
+    # would let one careless click empty a shelf.
+    category = models.ForeignKey(
+        Category,
+        on_delete=models.PROTECT,
+        related_name="books",
+    )
+
+    published_date = models.DateField(null=True, blank=True)
+
+    description = models.TextField(blank=True)
+
+    quantity = models.PositiveIntegerField(
+        default=1,
+        help_text="Total copies the library owns.",
+    )
+
+    available_quantity = models.PositiveIntegerField(
+        default=1,
+        help_text="Copies on the shelf right now, not out on loan.",
+    )
+
+    cover_image = models.ImageField(
+        upload_to="book_covers/",
+        blank=True,
+        help_text="Optional. A placeholder is shown when this is empty.",
+    )
+
+    # auto_now_add stamps this once at creation and never touches it
+    # again, which is what the recently added section needs.
+    added_date = models.DateTimeField(auto_now_add=True)
+
+    is_active = models.BooleanField(
+        default=True,
+        help_text=(
+            "Uncheck to withdraw this book from the catalogue while keeping "
+            "its borrowing history. Used instead of deleting a book that "
+            "has ever been on loan."
+        ),
+    )
+
+    class Meta:
+        ordering = ["title"]
+        constraints = [
+            # A database level guarantee that the shelf count can never
+            # exceed the number of copies owned. PositiveIntegerField
+            # already blocks negatives, so between the two it is
+            # impossible for a bug in the borrow or return logic to leave
+            # this book in an impossible state.
+            models.CheckConstraint(
+                condition=models.Q(available_quantity__lte=models.F("quantity")),
+                name="available_not_greater_than_quantity",
+            ),
+        ]
+
+    def __str__(self):
+        """Shown in dropdowns, in the admin and in the audit log."""
+        return f"{self.title} by {self.author}"
+
+    def get_absolute_url(self):
+        """The canonical page for this book."""
+        return reverse("catalog:book_detail", kwargs={"pk": self.pk})
 
     @property
-    def is_student(self):
+    def is_available(self):
         """
-        True for a borrower.
+        True when a student could borrow this right now.
 
-        Exists so that no view, decorator or template ever compares the
-        raw string "student". If the stored values ever change, they
-        change in one place.
+        A withdrawn book is never available even if copies are on the
+        shelf, which is what keeps the two flags from contradicting each
+        other in templates.
         """
-        return self.role == self.Role.STUDENT
+        return self.is_active and self.available_quantity > 0
 
     @property
-    def is_librarian(self):
-        """
-        True for staff who manage the catalogue and process returns.
+    def borrowed_count(self):
+        """How many copies are currently out on loan."""
+        return self.quantity - self.available_quantity
 
-        Deliberately does not treat is_superuser as an automatic yes. The
-        manager above already gives every superuser the librarian role,
-        so the two cannot drift apart, and keeping this check to the role
-        field alone means is_student and is_librarian stay mutually
-        exclusive, which is what the business rule tests rely on.
-        """
-        return self.role == self.Role.LIBRARIAN
+
+class Review(models.Model):
+    """
+    A student's rating and optional written comment on a book.
+
+    The average is deliberately not stored on Book. Views annotate it with
+    Avg("reviews__rating") instead, so the figure is always derived from
+    the rows that exist and cannot drift out of step with them.
+    """
+
+    book = models.ForeignKey(
+        Book,
+        on_delete=models.CASCADE,
+        related_name="reviews",
+    )
+
+    # Points at the setting rather than importing the User class, so the
+    # user model can be swapped without editing every model that
+    # references it.
+    student = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="reviews",
+    )
+
+    # The validators give a friendly form error. The constraint below is
+    # the real guarantee, since a validator only runs when something calls
+    # full_clean() and a raw ORM create bypasses it entirely.
+    rating = models.PositiveSmallIntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+        help_text="1 to 5 stars.",
+    )
+
+    comment = models.TextField(blank=True)
+
+    created_date = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        # Newest review first, which is what a book detail page wants.
+        ordering = ["-created_date"]
+        constraints = [
+            # One review per student per book, so nobody can inflate a
+            # rating by posting the same opinion ten times.
+            models.UniqueConstraint(
+                fields=["book", "student"],
+                name="one_review_per_student_per_book",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(rating__gte=1, rating__lte=5),
+                name="rating_between_1_and_5",
+            ),
+        ]
+
+    def __str__(self):
+        """Shown in the admin list and in the audit log."""
+        return f"{self.student} rated {self.book.title} {self.rating}/5"

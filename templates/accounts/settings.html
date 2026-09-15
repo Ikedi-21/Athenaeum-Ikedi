@@ -1,0 +1,765 @@
+{% extends "base.html" %}
+
+{% block page_title %}Account & System Settings{% endblock %}
+{% block page_description %}Manage personal preferences, account security, and enterprise administration settings for Athenaeum Ikedi.{% endblock %}
+
+{% block content %}
+<div class="settings-page container">
+  <div class="page-head page-head--with-action">
+    <div>
+      <div class="breadcrumb">
+        <a href="{% url 'home' %}">Home</a>
+        <span class="breadcrumb__sep">/</span>
+        {% if user.is_librarian %}
+          <a href="{% url 'dashboard:home' %}">Dashboard</a>
+          <span class="breadcrumb__sep">/</span>
+        {% endif %}
+        <span>Settings</span>
+      </div>
+      <h1>Settings & Preferences</h1>
+      <p class="lede">Manage your credentials, notification channels, and institutional library configurations.</p>
+    </div>
+    <div class="settings-user-indicator">
+      <span class="site-user-badge">
+        <span class="site-user-badge__avatar">{{ user.username|slice:":1"|upper }}</span>
+        <span class="site-user-badge__name">{{ user.get_full_name|default:user.username }}</span>
+        {% if user.is_librarian %}
+          <span class="badge badge--small badge--primary">Librarian Admin</span>
+        {% else %}
+          <span class="badge badge--small badge--neutral">Student Patron</span>
+        {% endif %}
+      </span>
+    </div>
+  </div>
+
+  <div class="settings-layout">
+    <!-- Navigation Sidebar / Tabs -->
+    <aside class="settings-nav" aria-label="Settings categories">
+      <div class="settings-nav__section">
+        <div class="settings-nav__title">User Settings</div>
+        <nav class="settings-nav__list">
+          <a href="?tab=profile" class="settings-nav__link {% if active_tab == 'profile' %}settings-nav__link--active{% endif %}">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+            <span>Account Profile</span>
+          </a>
+          <a href="?tab=security" class="settings-nav__link {% if active_tab == 'security' %}settings-nav__link--active{% endif %}">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+            <span>Security & Sessions</span>
+          </a>
+          <a href="?tab=notifications" class="settings-nav__link {% if active_tab == 'notifications' %}settings-nav__link--active{% endif %}">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+            <span>Notifications</span>
+          </a>
+          <a href="?tab=localization" class="settings-nav__link {% if active_tab == 'localization' %}settings-nav__link--active{% endif %}">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+            <span>Display & Region</span>
+          </a>
+        </nav>
+      </div>
+
+      {% if user.is_librarian %}
+        <div class="settings-nav__section settings-nav__section--admin">
+          <div class="settings-nav__title">
+            <span>Administration</span>
+            <span class="badge badge--small badge--primary">Admin</span>
+          </div>
+          <nav class="settings-nav__list">
+            <a href="?tab=admin_users" class="settings-nav__link {% if active_tab == 'admin_users' %}settings-nav__link--active{% endif %}">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+              <span>User Management</span>
+            </a>
+            <a href="?tab=admin_config" class="settings-nav__link {% if active_tab == 'admin_config' %}settings-nav__link--active{% endif %}">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+              <span>System Configuration</span>
+            </a>
+            <a href="?tab=admin_audit" class="settings-nav__link {% if active_tab == 'admin_audit' %}settings-nav__link--active{% endif %}">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+              <span>Audit & Security Logs</span>
+            </a>
+            <a href="?tab=admin_billing" class="settings-nav__link {% if active_tab == 'admin_billing' %}settings-nav__link--active{% endif %}">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg>
+              <span>Plan & Resources</span>
+            </a>
+          </nav>
+        </div>
+      {% endif %}
+    </aside>
+
+    <!-- Main Settings Pane -->
+    <main class="settings-content" id="settings-pane">
+      <!-- 1. USER: PROFILE TAB -->
+      {% if active_tab == 'profile' %}
+        <div class="panel settings-card">
+          <div class="settings-card__header">
+            <div>
+              <h2>Account Profile</h2>
+              <p class="text-muted text-small">Update your public identification details and institutional contact information.</p>
+            </div>
+            <div class="settings-avatar-badge">
+              <div class="settings-avatar-circle">{{ user.username|slice:":1"|upper }}</div>
+            </div>
+          </div>
+
+          <form method="post" action="{% url 'accounts:settings' %}">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="update_profile">
+
+            <div class="grid-two-col">
+              <div class="field">
+                <label class="field__label" for="first_name">First Name</label>
+                <input type="text" id="first_name" name="first_name" value="{{ user.first_name }}" autocomplete="given-name">
+              </div>
+              <div class="field">
+                <label class="field__label" for="last_name">Last Name</label>
+                <input type="text" id="last_name" name="last_name" value="{{ user.last_name }}" autocomplete="family-name">
+              </div>
+            </div>
+
+            <div class="grid-two-col">
+              <div class="field">
+                <label class="field__label" for="username">Username</label>
+                <input type="text" id="username" value="{{ user.username }}" disabled class="input-disabled">
+                <p class="field__help">Institutional username is assigned by system administrators.</p>
+              </div>
+              <div class="field">
+                <label class="field__label" for="email">Institutional Email <span class="field__required">*</span></label>
+                <input type="email" id="email" name="email" value="{{ user.email }}" required autocomplete="email">
+                <p class="field__help">Used for loan reminders and due-date notifications.</p>
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="field__label" for="phone_number">Contact Telephone</label>
+              <input type="text" id="phone_number" name="phone_number" value="{{ user_settings.phone_number }}" placeholder="+234 800 000 0000">
+            </div>
+
+            <div class="field">
+              <label class="field__label" for="bio">Academic Bio & Department</label>
+              <textarea id="bio" name="bio" rows="3" placeholder="Department of Computer Science & Information Systems..." maxlength="500">{{ user_settings.bio }}</textarea>
+              <p class="field__help">Brief summary visible to librarians during circulation desk checks (max 500 characters).</p>
+            </div>
+
+            <div class="settings-form-actions">
+              <button type="submit" class="button button--primary">Save Profile Changes</button>
+            </div>
+          </form>
+        </div>
+
+      <!-- 2. USER: SECURITY TAB -->
+      {% elif active_tab == 'security' %}
+        <div class="panel settings-card">
+          <div class="settings-card__header">
+            <div>
+              <h2>Security & Authentication</h2>
+              <p class="text-muted text-small">Update your login password, review connected sessions, and manage authentication controls.</p>
+            </div>
+          </div>
+
+          <div class="security-sections">
+            <!-- MFA Section -->
+            <div class="security-subcard">
+              <div class="security-subcard__info">
+                <h3>Multi-Factor Authentication (MFA)</h3>
+                <p class="text-muted text-small">Add an extra layer of defense requiring verification codes upon signing into library systems.</p>
+                <div class="badge-row">
+                  {% if user_settings.mfa_enabled %}
+                    <span class="badge badge--success">MFA Active</span>
+                  {% else %}
+                    <span class="badge badge--warning">MFA Inactive</span>
+                  {% endif %}
+                </div>
+              </div>
+              <form method="post" action="{% url 'accounts:settings' %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="toggle_mfa">
+                <button type="submit" class="button button--small {% if user_settings.mfa_enabled %}button--quiet{% else %}button--primary{% endif %}">
+                  {% if user_settings.mfa_enabled %}Disable MFA{% else %}Enable Two-Factor Auth{% endif %}
+                </button>
+              </form>
+            </div>
+
+            <!-- Password Change Section -->
+            <div class="security-subcard">
+              <h3>Change Password</h3>
+              <p class="text-muted text-small">Ensure your new password contains at least 8 characters, combining uppercase, lowercase, and numbers.</p>
+
+              <form method="post" action="{% url 'accounts:settings' %}" class="password-change-form">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="change_password">
+
+                <div class="field">
+                  <label class="field__label" for="id_old_password">Current Password <span class="field__required">*</span></label>
+                  <input type="password" id="id_old_password" name="old_password" required autocomplete="current-password">
+                </div>
+
+                <div class="grid-two-col">
+                  <div class="field">
+                    <label class="field__label" for="id_new_password1">New Password <span class="field__required">*</span></label>
+                    <input type="password" id="id_new_password1" name="new_password1" required autocomplete="new-password">
+                  </div>
+                  <div class="field">
+                    <label class="field__label" for="id_new_password2">Confirm New Password <span class="field__required">*</span></label>
+                    <input type="password" id="id_new_password2" name="new_password2" required autocomplete="new-password">
+                  </div>
+                </div>
+
+                <div class="settings-form-actions">
+                  <button type="submit" class="button">Update Password</button>
+                </div>
+              </form>
+            </div>
+
+            <!-- Active Sessions Section -->
+            <div class="security-subcard">
+              <h3>Active Device Sessions</h3>
+              <p class="text-muted text-small">Devices currently authenticated to your Athenaeum library account.</p>
+
+              <div class="table-container">
+                <table class="data-table data-table--compact">
+                  <thead>
+                    <tr>
+                      <th>Device & Browser</th>
+                      <th>IP Address</th>
+                      <th>Session Key</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>
+                        <strong>Windows Desktop (Workstation)</strong>
+                        <div class="text-muted text-small">{{ current_session.user_agent|truncatechars:45 }}</div>
+                      </td>
+                      <td class="font-mono">{{ current_session.ip_address }}</td>
+                      <td class="font-mono text-small">{{ current_session.session_key|truncatechars:18 }}</td>
+                      <td>
+                        <span class="badge badge--small badge--success">Current Active Session</span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      <!-- 3. USER: NOTIFICATIONS TAB -->
+      {% elif active_tab == 'notifications' %}
+        <div class="panel settings-card">
+          <div class="settings-card__header">
+            <div>
+              <h2>Notification Preferences</h2>
+              <p class="text-muted text-small">Configure how and when the library contacts you regarding borrowings, returns, and waitlists.</p>
+            </div>
+          </div>
+
+          <form method="post" action="{% url 'accounts:settings' %}">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="update_notifications">
+
+            <div class="preference-list">
+              <label class="preference-item">
+                <div class="preference-item__body">
+                  <div class="preference-item__title">Loan & Renewal Receipts</div>
+                  <div class="preference-item__desc">Receive instant email receipts whenever you borrow or renew an academic text at the desk.</div>
+                </div>
+                <input type="checkbox" name="notify_email_loans" class="toggle-checkbox" {% if user_settings.notify_email_loans %}checked{% endif %}>
+              </label>
+
+              <label class="preference-item">
+                <div class="preference-item__body">
+                  <div class="preference-item__title">Due Date Warnings & Overdue Alerts</div>
+                  <div class="preference-item__desc">Receive automated reminder emails 2 days prior to loan expiration, and urgent notice if overdue fees begin accruing.</div>
+                </div>
+                <input type="checkbox" name="notify_email_overdue" class="toggle-checkbox" {% if user_settings.notify_email_overdue %}checked{% endif %}>
+              </label>
+            </div>
+
+            <div class="settings-subgroup">
+              <h3>Summary Activity Digest</h3>
+              <p class="text-muted text-small">Choose the frequency of consolidated library activity and catalogue digest notifications.</p>
+
+              <div class="radio-options-grid">
+                <label class="radio-card {% if user_settings.notify_email_digest == 'none' %}radio-card--selected{% endif %}">
+                  <input type="radio" name="notify_email_digest" value="none" {% if user_settings.notify_email_digest == 'none' %}checked{% endif %}>
+                  <div class="radio-card__title">None</div>
+                  <div class="radio-card__desc">Only critical transactional emails</div>
+                </label>
+
+                <label class="radio-card {% if user_settings.notify_email_digest == 'daily' %}radio-card--selected{% endif %}">
+                  <input type="radio" name="notify_email_digest" value="daily" {% if user_settings.notify_email_digest == 'daily' %}checked{% endif %}>
+                  <div class="radio-card__title">Daily Morning</div>
+                  <div class="radio-card__desc">Daily brief of holds, loans & desk notices</div>
+                </label>
+
+                <label class="radio-card {% if user_settings.notify_email_digest == 'weekly' %}radio-card--selected{% endif %}">
+                  <input type="radio" name="notify_email_digest" value="weekly" {% if user_settings.notify_email_digest == 'weekly' %}checked{% endif %}>
+                  <div class="radio-card__title">Weekly Digest</div>
+                  <div class="radio-card__desc">Consolidated weekly academic library report</div>
+                </label>
+              </div>
+            </div>
+
+            <div class="settings-form-actions">
+              <button type="submit" class="button button--primary">Save Notification Settings</button>
+            </div>
+          </form>
+        </div>
+
+      <!-- 4. USER: DISPLAY & LOCALIZATION TAB -->
+      {% elif active_tab == 'localization' %}
+        <div class="panel settings-card">
+          <div class="settings-card__header">
+            <div>
+              <h2>Display & Localization</h2>
+              <p class="text-muted text-small">Customize your interface theme, temporal time zone, and academic date format preferences.</p>
+            </div>
+          </div>
+
+          <form method="post" action="{% url 'accounts:settings' %}">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="update_localization">
+
+            <div class="field">
+              <label class="field__label">Visual Theme Preference</label>
+              <div class="theme-options-grid">
+                <label class="theme-card {% if user_settings.theme == 'light' %}theme-card--selected{% endif %}">
+                  <input type="radio" name="theme" value="light" {% if user_settings.theme == 'light' %}checked{% endif %}>
+                  <div class="theme-preview theme-preview--light">
+                    <div class="theme-preview__bar"></div>
+                    <div class="theme-preview__body"></div>
+                  </div>
+                  <span class="theme-card__label">Classic Academic Light</span>
+                </label>
+
+                <label class="theme-card {% if user_settings.theme == 'dark' %}theme-card--selected{% endif %}">
+                  <input type="radio" name="theme" value="dark" {% if user_settings.theme == 'dark' %}checked{% endif %}>
+                  <div class="theme-preview theme-preview--dark">
+                    <div class="theme-preview__bar"></div>
+                    <div class="theme-preview__body"></div>
+                  </div>
+                  <span class="theme-card__label">Executive Dark</span>
+                </label>
+
+                <label class="theme-card {% if user_settings.theme == 'system' %}theme-card--selected{% endif %}">
+                  <input type="radio" name="theme" value="system" {% if user_settings.theme == 'system' %}checked{% endif %}>
+                  <div class="theme-preview theme-preview--system">
+                    <div class="theme-preview__bar"></div>
+                    <div class="theme-preview__body"></div>
+                  </div>
+                  <span class="theme-card__label">System Default</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="grid-two-col">
+              <div class="field">
+                <label class="field__label" for="timezone">Campus Timezone</label>
+                <select id="timezone" name="timezone">
+                  <option value="Africa/Lagos" {% if user_settings.timezone == 'Africa/Lagos' %}selected{% endif %}>Africa/Lagos (WAT, UTC+1)</option>
+                  <option value="UTC" {% if user_settings.timezone == 'UTC' %}selected{% endif %}>Coordinated Universal Time (UTC)</option>
+                  <option value="Europe/London" {% if user_settings.timezone == 'Europe/London' %}selected{% endif %}>Europe/London (GMT/BST)</option>
+                  <option value="America/New_York" {% if user_settings.timezone == 'America/New_York' %}selected{% endif %}>America/New York (EST/EDT)</option>
+                </select>
+                <p class="field__help">All loan due dates and audit records resolve against this reference zone.</p>
+              </div>
+
+              <div class="field">
+                <label class="field__label" for="date_format">Date Format Display</label>
+                <select id="date_format" name="date_format">
+                  <option value="YYYY-MM-DD" {% if user_settings.date_format == 'YYYY-MM-DD' %}selected{% endif %}>YYYY-MM-DD (ISO standard: 2026-09-14)</option>
+                  <option value="DD/MM/YYYY" {% if user_settings.date_format == 'DD/MM/YYYY' %}selected{% endif %}>DD/MM/YYYY (UK standard: 14/09/2026)</option>
+                  <option value="MM/DD/YYYY" {% if user_settings.date_format == 'MM/DD/YYYY' %}selected{% endif %}>MM/DD/YYYY (US standard: 09/14/2026)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="settings-form-actions">
+              <button type="submit" class="button button--primary">Save Display Settings</button>
+            </div>
+          </form>
+        </div>
+
+      <!-- ========================================================== -->
+      <!-- ADMIN TABS (Only rendered for Librarians)                   -->
+      <!-- ========================================================== -->
+      {% elif active_tab == 'admin_users' and user.is_librarian %}
+        <div class="panel settings-card">
+          <div class="settings-card__header">
+            <div>
+              <div class="badge-row">
+                <span class="badge badge--primary">Enterprise Admin Panel</span>
+              </div>
+              <h2>User & Access Control Management</h2>
+              <p class="text-muted text-small">Inspect registered patron accounts, toggle membership activation, and manage administrative role assignments.</p>
+            </div>
+          </div>
+
+          <!-- KPI Summary -->
+          <div class="stat-grid">
+            <div class="stat-card">
+              <div class="stat-card__label">Total Members</div>
+              <div class="stat-card__value">{{ total_members_count }}</div>
+              <div class="stat-card__subtext">Registered patron records</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card__label">Active Accounts</div>
+              <div class="stat-card__value">{{ active_members_count }}</div>
+              <div class="stat-card__subtext">Permitted to borrow</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card__label">Student Borrowers</div>
+              <div class="stat-card__value">{{ students_count }}</div>
+              <div class="stat-card__subtext">Active student privileges</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card__label">Librarian Staff</div>
+              <div class="stat-card__value">{{ librarians_count }}</div>
+              <div class="stat-card__subtext">Administrative clearance</div>
+            </div>
+          </div>
+
+          <!-- User Search Filter -->
+          <form method="get" action="{% url 'accounts:settings' %}" class="filter-bar">
+            <input type="hidden" name="tab" value="admin_users">
+            <div class="search-input-group">
+              <input type="search" name="user_q" value="{{ user_search }}" placeholder="Search by name, username or email..." class="form-input" style="min-width: 280px;">
+              <button type="submit" class="button button--small">Filter</button>
+              {% if user_search %}
+                <a href="?tab=admin_users" class="button button--small button--quiet">Clear</a>
+              {% endif %}
+            </div>
+          </form>
+
+          <!-- Members Table -->
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Patron</th>
+                  <th>Institutional Email</th>
+                  <th>Role Assignment</th>
+                  <th>Account Status</th>
+                  <th>Enrolled</th>
+                  <th>Admin Controls</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for m in managed_users %}
+                  <tr>
+                    <td>
+                      <div class="user-cell">
+                        <span class="user-avatar-tiny">{{ m.username|slice:":1"|upper }}</span>
+                        <div>
+                          <strong>{{ m.get_full_name|default:m.username }}</strong>
+                          <div class="text-muted text-small">@{{ m.username }}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>{{ m.email }}</td>
+                    <td>
+                      {% if m.is_librarian %}
+                        <span class="badge badge--primary">Librarian</span>
+                      {% else %}
+                        <span class="badge badge--neutral">Student</span>
+                      {% endif %}
+                    </td>
+                    <td>
+                      {% if m.is_active %}
+                        <span class="badge badge--success">Active</span>
+                      {% else %}
+                        <span class="badge badge--danger">Suspended</span>
+                      {% endif %}
+                    </td>
+                    <td class="text-small text-muted">{{ m.date_joined|date:"M j, Y" }}</td>
+                    <td>
+                      {% if m.pk != user.pk %}
+                        <div class="button-group">
+                          <!-- Role Toggle Form -->
+                          <form method="post" action="{% url 'accounts:settings' %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="admin_change_user_role">
+                            <input type="hidden" name="target_user_id" value="{{ m.pk }}">
+                            {% if m.is_librarian %}
+                              <input type="hidden" name="new_role" value="student">
+                              <button type="submit" class="button button--small button--quiet" title="Demote to Student borrower">Demote</button>
+                            {% else %}
+                              <input type="hidden" name="new_role" value="librarian">
+                              <button type="submit" class="button button--small" title="Grant Librarian staff powers">Promote</button>
+                            {% endif %}
+                          </form>
+
+                          <!-- Activation Toggle Form -->
+                          <form method="post" action="{% url 'accounts:settings' %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="admin_toggle_user_active">
+                            <input type="hidden" name="target_user_id" value="{{ m.pk }}">
+                            {% if m.is_active %}
+                              <button type="submit" class="button button--small button--quiet text-danger" title="Suspend borrowing access">Deactivate</button>
+                            {% else %}
+                              <button type="submit" class="button button--small button--quiet text-success" title="Restore account access">Activate</button>
+                            {% endif %}
+                          </form>
+                        </div>
+                      {% else %}
+                        <span class="text-muted text-small">You (Current)</span>
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% empty %}
+                  <tr>
+                    <td colspan="6" class="text-muted text-center" style="padding: 2rem;">No user accounts match query "{{ user_search }}".</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      <!-- 5. ADMIN: SYSTEM CONFIGURATION TAB -->
+      {% elif active_tab == 'admin_config' and user.is_librarian %}
+        <div class="panel settings-card">
+          <div class="settings-card__header">
+            <div>
+              <div class="badge-row">
+                <span class="badge badge--primary">Enterprise Admin Panel</span>
+              </div>
+              <h2>Enterprise System Configuration</h2>
+              <p class="text-muted text-small">Define campus-wide circulation regulations, fine penalties, API keys, and operational modes.</p>
+            </div>
+          </div>
+
+          <form method="post" action="{% url 'accounts:settings' %}">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="admin_update_system_config">
+
+            <div class="settings-subgroup">
+              <h3>Circulation & Borrowing Policies</h3>
+              <p class="text-muted text-small">Institutional policy thresholds enforced at checkout and return desks.</p>
+
+              <div class="grid-two-col">
+                <div class="field">
+                  <label class="field__label" for="loan_duration_days">Standard Loan Duration (Days)</label>
+                  <input type="number" id="loan_duration_days" name="loan_duration_days" value="{{ system_config.loan_duration_days }}" min="1" max="90" required>
+                  <p class="field__help">Default checkout window granted to students.</p>
+                </div>
+
+                <div class="field">
+                  <label class="field__label" for="max_books_per_student">Max Simultaneous Loans Per Student</label>
+                  <input type="number" id="max_books_per_student" name="max_books_per_student" value="{{ system_config.max_books_per_student }}" min="1" max="20" required>
+                  <p class="field__help">Borrowing ceiling enforced by circulation validation.</p>
+                </div>
+              </div>
+
+              <div class="grid-two-col">
+                <div class="field">
+                  <label class="field__label" for="fine_rate_per_day">Late Penalty Rate (₦ per day)</label>
+                  <input type="number" id="fine_rate_per_day" name="fine_rate_per_day" value="{{ system_config.fine_rate_per_day }}" min="0" step="5" required>
+                  <p class="field__help">Accrual rate applied to overdue returns.</p>
+                </div>
+
+                <div class="field">
+                  <label class="field__label" for="session_timeout_minutes">Security Session Timeout (Minutes)</label>
+                  <input type="number" id="session_timeout_minutes" name="session_timeout_minutes" value="{{ system_config.session_timeout_minutes }}" min="5" max="720" required>
+                  <p class="field__help">Rolling inactivity threshold before mandatory re-login.</p>
+                </div>
+              </div>
+
+              <div class="preference-list">
+                <label class="preference-item">
+                  <div class="preference-item__body">
+                    <div class="preference-item__title">Patron Self-Service Reservations</div>
+                    <div class="preference-item__desc">Allow students to place online waitlist queue holds on checked-out books.</div>
+                  </div>
+                  <input type="checkbox" name="allow_student_reservations" class="toggle-checkbox" {% if system_config.allow_student_reservations %}checked{% endif %}>
+                </label>
+
+                <label class="preference-item">
+                  <div class="preference-item__body">
+                    <div class="preference-item__title">Campus Maintenance Mode</div>
+                    <div class="preference-item__desc">Temporarily freeze desk checkouts during inventory audits or cataloguing migrations.</div>
+                  </div>
+                  <input type="checkbox" name="maintenance_mode" class="toggle-checkbox" {% if system_config.maintenance_mode %}checked{% endif %}>
+                </label>
+              </div>
+            </div>
+
+            <div class="settings-subgroup">
+              <h3>Integration & API Webhooks</h3>
+              <p class="text-muted text-small">Configure enterprise webhook delivery and view authenticated institutional credentials.</p>
+
+              <div class="field">
+                <label class="field__label" for="webhook_url">Automated Circulation Webhook Endpoint</label>
+                <input type="url" id="webhook_url" name="webhook_url" value="{{ system_config.webhook_url }}" placeholder="https://api.university.edu/webhooks/library">
+                <p class="field__help">Receives JSON payloads when books are checked out, returned, or reported overdue.</p>
+              </div>
+            </div>
+
+            <div class="settings-form-actions">
+              <button type="submit" class="button button--primary">Save System Configuration</button>
+            </div>
+          </form>
+
+          <!-- Separate API Key Form -->
+          <div class="security-subcard" style="margin-top: 2rem;">
+            <h3>Institutional API Bearer Key</h3>
+            <p class="text-muted text-small">Authenticated API key used by campus enterprise services to read catalogue collections.</p>
+            <div class="api-key-box font-mono">{{ system_config.api_key_primary }}</div>
+
+            <form method="post" action="{% url 'accounts:settings' %}" data-confirm="Are you sure you wish to regenerate the primary API key? Existing integrations will need their authorization bearer header updated immediately.">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="admin_regenerate_api_key">
+              <button type="submit" class="button button--small button--quiet" style="margin-top: 0.75rem;">Regenerate API Bearer Key</button>
+            </form>
+          </div>
+        </div>
+
+      <!-- 6. ADMIN: AUDIT LOGS TAB -->
+      {% elif active_tab == 'admin_audit' and user.is_librarian %}
+        <div class="panel settings-card">
+          <div class="settings-card__header">
+            <div>
+              <div class="badge-row">
+                <span class="badge badge--primary">Enterprise Admin Panel</span>
+              </div>
+              <h2>Forensic Audit Trail & Security Telemetry</h2>
+              <p class="text-muted text-small">Immutable transaction log tracking all administrative, circulation, and account state modifications.</p>
+            </div>
+            <a href="{% url 'circulation:audit_log' %}" class="button button--small button--quiet">View Full Audit Trail &rarr;</a>
+          </div>
+
+          <div class="table-container">
+            <table class="data-table data-table--compact">
+              <thead>
+                <tr>
+                  <th>Timestamp (WAT)</th>
+                  <th>Action Event</th>
+                  <th>Actor Account</th>
+                  <th>Target Entity</th>
+                  <th>Context Details</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for log in recent_audit_logs %}
+                  <tr>
+                    <td class="font-mono text-small">{{ log.timestamp|date:"Y-m-d H:i" }}</td>
+                    <td>
+                      <span class="badge badge--small badge--primary">{{ log.get_action_display }}</span>
+                    </td>
+                    <td>
+                      {% if log.user %}
+                        <strong>{{ log.user.username }}</strong>
+                        <span class="text-muted text-small">({{ log.user.get_role_display }})</span>
+                      {% else %}
+                        <span class="text-muted">System Automated</span>
+                      {% endif %}
+                    </td>
+                    <td><strong>{{ log.target_model }}:</strong> #{{ log.target_id }}</td>
+                    <td class="text-small text-muted">{{ log.details|default:"Logged transaction" }}</td>
+                  </tr>
+                {% empty %}
+                  <tr>
+                    <td colspan="5" class="text-muted text-center" style="padding: 2rem;">No audit transactions recorded yet.</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      <!-- 7. ADMIN: BILLING & RESOURCE USAGE TAB -->
+      {% elif active_tab == 'admin_billing' and user.is_librarian %}
+        <div class="panel settings-card">
+          <div class="settings-card__header">
+            <div>
+              <div class="badge-row">
+                <span class="badge badge--primary">Enterprise Admin Panel</span>
+              </div>
+              <h2>Subscription Plan & Institutional Resource Quotas</h2>
+              <p class="text-muted text-small">Overview of enterprise academic license, storage consumption, and contracted volume tiers.</p>
+            </div>
+            <span class="badge badge--success">License Active</span>
+          </div>
+
+          <!-- Subscription Plan Card -->
+          <div class="billing-tier-banner">
+            <div class="billing-tier-banner__info">
+              <div class="badge badge--small badge--primary" style="margin-bottom: 0.5rem;">Institutional License</div>
+              <h3 style="font-size: 1.4rem; margin: 0 0 0.25rem;">{{ system_config.subscription_tier }}</h3>
+              <p class="text-muted text-small" style="margin: 0;">Unlimited catalogue titles &bull; Multi-campus branch ready &bull; Priority 24/7 SLA</p>
+            </div>
+            <div class="billing-tier-banner__renew">
+              <div class="text-muted text-small">Next Billing Cycle</div>
+              <div class="font-bold" style="font-size: 1.1rem;">October 1, 2027</div>
+            </div>
+          </div>
+
+          <!-- Usage Meters -->
+          <div class="quota-meters-grid" style="margin: 2rem 0;">
+            <div class="quota-card">
+              <div class="quota-card__header">
+                <span class="font-bold">Cloud Media Storage</span>
+                <span class="text-muted text-small">{{ system_config.storage_used_gb }} GB / {{ system_config.storage_allocated_gb }} GB</span>
+              </div>
+              <div class="progress-bar-track">
+                <div class="progress-bar-fill" style="width: 14%;"></div>
+              </div>
+              <div class="text-muted text-small" style="margin-top: 0.35rem;">14% capacity utilized for book covers & digital documents.</div>
+            </div>
+
+            <div class="quota-card">
+              <div class="quota-card__header">
+                <span class="font-bold">Patron Member Capacity</span>
+                <span class="text-muted text-small">{{ total_members_count }} / {{ system_config.max_active_members }} seats</span>
+              </div>
+              <div class="progress-bar-track">
+                <div class="progress-bar-fill progress-bar-fill--emerald" style="width: 2%;"></div>
+              </div>
+              <div class="text-muted text-small" style="margin-top: 0.35rem;">Contracted for up to 5,000 university students and faculty.</div>
+            </div>
+          </div>
+
+          <!-- Invoice Statement History -->
+          <div class="settings-subgroup">
+            <h3>Institutional Billing & Settlement History</h3>
+            <p class="text-muted text-small">Download official receipt statements for accounting reconciliation.</p>
+
+            <div class="table-container">
+              <table class="data-table data-table--compact">
+                <thead>
+                  <tr>
+                    <th>Invoice ID</th>
+                    <th>Billing Date</th>
+                    <th>Description</th>
+                    <th>Settled Amount</th>
+                    <th>Payment Status</th>
+                    <th>Statement Document</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="font-mono">ATH-INV-2026-001</td>
+                    <td>Sept 1, 2026</td>
+                    <td>Annual Enterprise License (Athenaeum Ikedi Campus)</td>
+                    <td class="font-bold">₦1,250,000.00</td>
+                    <td><span class="badge badge--small badge--success">Paid (Wire)</span></td>
+                    <td><a href="#" class="button button--small button--quiet" onclick="alert('Downloading verified institutional receipt statement PDF...'); return false;">Download PDF</a></td>
+                  </tr>
+                  <tr>
+                    <td class="font-mono">ATH-INV-2025-001</td>
+                    <td>Sept 1, 2025</td>
+                    <td>Annual Enterprise License (Initial Deployment)</td>
+                    <td class="font-bold">₦1,250,000.00</td>
+                    <td><span class="badge badge--small badge--success">Paid (Wire)</span></td>
+                    <td><a href="#" class="button button--small button--quiet" onclick="alert('Downloading verified institutional receipt statement PDF...'); return false;">Download PDF</a></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      {% endif %}
+    </main>
+  </div>
+</div>
+{% endblock %}

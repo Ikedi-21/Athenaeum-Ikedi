@@ -1,82 +1,185 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% comment %}
-  The landing page. It is a plain TemplateView in the root URLconf, so
-  there is no model behind it and nothing here depends on context: the only
-  variable used is user, which the auth context processor supplies on every
-  request.
-
-  It is marked login_not_required in config/urls.py. Without that, the site
-  wide LoginRequiredMiddleware would send an anonymous visitor from the
-  front door straight to a login form, which is the opposite of what a
-  front door is for.
-{% endcomment %}
-
-{% block page_title %}Athenaeum Ikedi{% endblock %}
-{% block page_description %}Athenaeum Ikedi is a library management system: browse the shelves, borrow up to three books at a time, and keep track of what is due back.{% endblock %}
+{% block page_title %}Athenaeum Ikedi | Academic Library Management System{% endblock %}
+{% block page_description %}Athenaeum Ikedi is a modern academic library management system: explore bibliographic holdings, borrow monographs, and track your loans.{% endblock %}
 
 {% block content %}
-  <section class="hero">
-    {% comment %}
-      The stacked logo is used here rather than the horizontal one in the
-      header, because at hero size the stacked lockup holds its proportions
-      and the wordmark stays readable.
+<div class="landing-page">
+  {# 1. TWO-COLUMN SHOWCASE HERO #}
+  <section class="hero hero--showcase">
+    <div class="hero__content">
+      <div class="badge-row">
+        <span class="badge badge--outline" style="letter-spacing: 0.1em; font-size: 0.75rem;">
+          &bull; BIBLIOGRAPHIC INFRASTRUCTURE &bull;
+        </span>
+      </div>
 
-      alt is empty on purpose. The library name is printed as the heading
-      immediately below, so giving this image alt text would make a screen
-      reader say the same words twice. An empty alt is the correct way to
-      mark an image as decorative; omitting the attribute entirely is not,
-      because then some readers fall back to announcing the file name.
-    {% endcomment %}
-    <img class="hero__mark" src="{% static 'images/logo-stacked.png' %}" alt="" height="120">
+      <h1 class="hero__title">Manage Your Reading, Simplified.</h1>
+      <p class="hero__lede">
+        A unified circulation and catalogue management system built for students, researchers, and academic librarians.
+      </p>
 
-    <h1 class="hero__title">Athenaeum Ikedi</h1>
-    <p class="hero__lede">
-      A quiet place to find a book, borrow it, and remember when it is due
-      back.
+      <div class="hero__actions">
+        <a class="button button--primary" href="{% url 'catalog:book_list' %}">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          Browse Catalogue
+        </a>
+
+        {% if user.is_authenticated %}
+          <a class="button button--secondary" href="{% url 'dashboard:home' %}">Open Dashboard</a>
+        {% else %}
+          <a class="button button--secondary" href="{% url 'accounts:register' %}">Join Library</a>
+        {% endif %}
+      </div>
+
+      {# INSTANT CATALOG SEARCH BAR #}
+      <div class="hero-search-box">
+        <form method="get" action="{% url 'catalog:book_list' %}" class="search-form" role="search">
+          <div class="search-input-group">
+            <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--ink-faint); margin-left: 0.25rem;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="search" name="q" placeholder="Query by Title, Author, or ISBN..." autocomplete="off">
+            <button type="submit" class="button button--primary button--small">Search</button>
+          </div>
+        </form>
+        <div class="search-category-chips">
+          <span class="text-small text-muted" style="margin-right: 0.25rem;">Popular:</span>
+          <a href="{% url 'catalog:book_list' %}?category=Computer+Science+%26+AI" class="search-chip">Computer Science</a>
+          <a href="{% url 'catalog:book_list' %}?category=African+Literature+%26+Classics" class="search-chip">African Literature</a>
+          <a href="{% url 'catalog:book_list' %}?category=Economics+%26+Finance" class="search-chip">Economics</a>
+          <a href="{% url 'catalog:book_list' %}?category=Philosophy+%26+Jurisprudence" class="search-chip">Philosophy</a>
+          <a href="{% url 'catalog:book_list' %}?category=Pure+%26+Applied+Mathematics" class="search-chip">Mathematics</a>
+        </div>
+      </div>
+    </div>
+
+    {# HERO SHOWCASE IMAGE (Picture 1) #}
+    <div class="hero-visual-card">
+      <img src="{% static 'images/hero-library.png' %}" alt="Athenaeum Ikedi Grand Reading Hall and Physical Library Stacks" class="hero-visual-img" loading="eager">
+      <div class="hero-visual-badge">
+        <div class="hero-visual-badge__icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+        </div>
+        <div>
+          <div class="hero-visual-badge__title">Athenaeum Physical Repository</div>
+          <div class="hero-visual-badge__sub">5 Curated Academic Fields &bull; Verified Shelf Holdings</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {# 2. STATS BANNER #}
+  <section class="stat-grid" style="margin-top: 1rem;">
+    <div class="stat-card" style="text-align: center;">
+      <div class="stat-card__value" style="font-size: 2.25rem;">3 Books</div>
+      <div class="stat-card__label" style="margin-top: 0.25rem;">Concurrent Borrowing Cap</div>
+    </div>
+    <div class="stat-card" style="text-align: center;">
+      <div class="stat-card__value" style="font-size: 2.25rem;">14 Days</div>
+      <div class="stat-card__label" style="margin-top: 0.25rem;">Standard Lending Window</div>
+    </div>
+    <div class="stat-card" style="text-align: center;">
+      <div class="stat-card__value" style="font-size: 2.25rem;">2 Extensions</div>
+      <div class="stat-card__label" style="margin-top: 0.25rem;">Automated Loan Renewals</div>
+    </div>
+    <div class="stat-card" style="text-align: center;">
+      <div class="stat-card__value" style="font-size: 2.25rem;">100% ACID</div>
+      <div class="stat-card__label" style="margin-top: 0.25rem;">Forensic Audit Ledger</div>
+    </div>
+  </section>
+
+  {# 3. ARCHIVE SPOTLIGHT SECTION (Picture 2) #}
+  <section class="archive-spotlight">
+    <div class="archive-spotlight__media">
+      <img src="{% static 'images/stacks-library.png' %}" alt="Institutional Monograph Archives and Academic Stacks" class="archive-spotlight__img" loading="lazy">
+    </div>
+    <div class="archive-spotlight__body">
+      <span class="badge badge--outline" style="letter-spacing: 0.08em;">PHYSICAL ARCHIVES &amp; MONOGRAPHS</span>
+      <h2>Curated for Rigorous Academic Inquiries</h2>
+      <p>
+        Every volume in the Athenaeum collection is catalogued with strict ISBN-13 checksum validation, classification routing, and live physical shelf reconciliation.
+      </p>
+      <ul class="archive-checklist">
+        <li class="archive-checklist__item">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          <span><strong>Fast Shelf Retrieval:</strong> Standardized classification with real-time in-stock vs. checked-out counts.</span>
+        </li>
+        <li class="archive-checklist__item">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          <span><strong>Autonomous Patron Desk:</strong> Students can review active loans, request 7-day extensions, and place holds on reserved titles.</span>
+        </li>
+        <li class="archive-checklist__item">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          <span><strong>Librarian Desk Operations:</strong> One-click loan issuance, rapid check-ins, automated fine calculation, and permanent audit trails.</span>
+        </li>
+      </ul>
+      <div class="button-group">
+        <a href="{% url 'catalog:book_list' %}" class="button button--primary">Explore Full Collection &rarr;</a>
+        {% if not user.is_authenticated %}
+          <a href="{% url 'accounts:login' %}" class="button button--secondary">Patron Sign In</a>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+
+  {# 4. CORE MODULES #}
+  <section class="section-block" style="margin-top: 4rem;">
+    <div style="text-align: center; margin-bottom: 2rem;">
+      <span class="badge badge--outline" style="letter-spacing: 0.08em; margin-bottom: 0.5rem;">CORE MODULES</span>
+      <h2 style="font-size: 2rem;">Engineered for Academic Precision</h2>
+      <p class="text-muted" style="max-width: 55ch; margin: 0.5rem auto 0;">
+        Designed specifically to honor the workflows of institutional lending, classification schemes, and patron autonomy.
+      </p>
+    </div>
+
+    <div class="quick-links-grid">
+      <div class="quick-link-card" style="cursor: default;">
+        <div class="quick-link-card__icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        </div>
+        <div class="quick-link-card__body">
+          <div class="text-small text-muted font-mono">MODULE 01 &bull; RETRIEVAL</div>
+          <h3 style="margin-top: 0.25rem;">Browse & Search Books</h3>
+          <p>Instant multi-attribute search across all catalogued titles, ISBN validation, and shelf availability status.</p>
+        </div>
+      </div>
+
+      <div class="quick-link-card" style="cursor: default;">
+        <div class="quick-link-card__icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+        </div>
+        <div class="quick-link-card__body">
+          <div class="text-small text-muted font-mono">MODULE 02 &bull; PATRON DESK</div>
+          <h3 style="margin-top: 0.25rem;">Track Borrowed Works</h3>
+          <p>Real-time personal circulation history, automatic due-date alerts, renewal requests, and hold queue status.</p>
+        </div>
+      </div>
+
+      <div class="quick-link-card" style="cursor: default;">
+        <div class="quick-link-card__icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+        </div>
+        <div class="quick-link-card__body">
+          <div class="text-small text-muted font-mono">MODULE 03 &bull; CIRCULATION DESK</div>
+          <h3 style="margin-top: 0.25rem;">Returns & Fines Management</h3>
+          <p>One-click desk returns, transparent overdue fine calculation, fine receipts, and shelf stock reconciliation.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {# 5. CALL TO ACTION #}
+  <section class="panel" style="text-align: center; padding: 3.5rem 1.5rem; margin-top: 3.5rem; background: var(--surface); border: 1px solid var(--line);">
+    <h2 style="font-size: 1.85rem; margin-bottom: 0.5rem;">Access the Athenaeum Catalogue Today</h2>
+    <p class="text-muted" style="max-width: 50ch; margin: 0 auto 1.75rem;">
+      Equip your studies and research with curated academic works and effortless loan tracking.
     </p>
-
-    <p class="hero__actions">
-      <a class="button" href="{% url 'catalog:book_list' %}">Browse the catalogue</a>
-
-      {% comment %}
-        The second button changes according to who is looking. A visitor is
-        invited to join; somebody already signed in is offered their
-        dashboard instead, because inviting them to register again would be
-        a dead end.
-      {% endcomment %}
-      {% if user.is_authenticated %}
-        <a class="button button--quiet" href="{% url 'dashboard:home' %}">Your dashboard</a>
-      {% else %}
-        <a class="button button--quiet" href="{% url 'accounts:register' %}">Join the library</a>
+    <div class="button-group" style="justify-content: center;">
+      <a href="{% url 'catalog:book_list' %}" class="button button--primary">Explore Library Catalogue</a>
+      {% if not user.is_authenticated %}
+        <a href="{% url 'accounts:register' %}" class="button button--secondary">Create Student Account</a>
       {% endif %}
-    </p>
-  </section>
-
-  <section class="feature-grid" aria-label="What you can do here">
-    <div class="feature">
-      <h2>Browse without an account</h2>
-      <p>
-        The catalogue is open to anyone. Search it, filter it by subject, and
-        read what other members thought before you decide.
-      </p>
-    </div>
-
-    <div class="feature">
-      <h2>Borrow up to three books</h2>
-      <p>
-        Members hold three books at a time. Each one has a due date, and the
-        system tells you what is coming up and what is overdue.
-      </p>
-    </div>
-
-    <div class="feature">
-      <h2>Keep your own record</h2>
-      <p>
-        Every loan and return stays on your history, so you always know what
-        you have read and what you still owe.
-      </p>
     </div>
   </section>
+</div>
 {% endblock %}

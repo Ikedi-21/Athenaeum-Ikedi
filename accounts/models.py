@@ -96,3 +96,153 @@ class User(AbstractUser):
         exclusive, which is what the business rule tests rely on.
         """
         return self.role == self.Role.LIBRARIAN
+
+    @property
+    def user_settings(self):
+        """
+        Returns the UserSettings instance for this user, creating one with defaults if needed.
+        """
+        settings_obj, _ = UserSettings.objects.get_or_create(user=self)
+        return settings_obj
+
+
+class UserSettings(models.Model):
+    """
+    Individual user profile and configuration preferences.
+    """
+    user = models.OneToOneField(
+        User, on_delete=models.CASCADE, related_name="settings"
+    )
+    bio = models.TextField(blank=True, max_length=500, default="")
+    phone_number = models.CharField(max_length=20, blank=True, default="")
+
+    # Notification preferences
+    notify_email_loans = models.BooleanField(
+        default=True,
+        help_text="Receive email confirmation upon checkout and renewal."
+    )
+    notify_email_overdue = models.BooleanField(
+        default=True,
+        help_text="Receive urgent alerts when borrowed titles approach due dates."
+    )
+    notify_email_digest = models.CharField(
+        max_length=10,
+        choices=[("none", "None"), ("daily", "Daily"), ("weekly", "Weekly")],
+        default="daily",
+        help_text="Summary email frequency for library activities and holds."
+    )
+
+    # Display & Localization
+    theme = models.CharField(
+        max_length=10,
+        choices=[("light", "Light"), ("dark", "Dark"), ("system", "System")],
+        default="light",
+    )
+    timezone = models.CharField(max_length=50, default="Africa/Lagos")
+    date_format = models.CharField(
+        max_length=20,
+        choices=[
+            ("YYYY-MM-DD", "YYYY-MM-DD (ISO)"),
+            ("DD/MM/YYYY", "DD/MM/YYYY (UK)"),
+            ("MM/DD/YYYY", "MM/DD/YYYY (US)"),
+        ],
+        default="YYYY-MM-DD",
+    )
+
+    # Security & Access
+    mfa_enabled = models.BooleanField(
+        default=False,
+        help_text="Two-factor authentication requirement status."
+    )
+
+    class Meta:
+        verbose_name = "User Settings"
+        verbose_name_plural = "User Settings"
+
+    def __str__(self):
+        return f"Settings for {self.user.username}"
+
+
+class SystemConfig(models.Model):
+    """
+    Enterprise platform configuration parameters managed by Librarians/Admins.
+    Implements a database-backed singleton pattern.
+    """
+    singleton_id = models.PositiveSmallIntegerField(primary_key=True, default=1, editable=False)
+
+    # Circulation & Policy Rules
+    loan_duration_days = models.PositiveIntegerField(
+        default=14,
+        help_text="Standard loan window granted for borrowed titles in days."
+    )
+    max_books_per_student = models.PositiveIntegerField(
+        default=3,
+        help_text="Maximum simultaneous active loans permitted per student account."
+    )
+    fine_rate_per_day = models.DecimalField(
+        max_digits=6,
+        decimal_places=2,
+        default=50.00,
+        help_text="Overdue fine penalty accrued per calendar day late in Naira (₦)."
+    )
+    allow_student_reservations = models.BooleanField(
+        default=True,
+        help_text="Enable self-service queue holds on checked-out books."
+    )
+    maintenance_mode = models.BooleanField(
+        default=False,
+        help_text="Suspend public transactions for scheduled maintenance operations."
+    )
+    session_timeout_minutes = models.PositiveIntegerField(
+        default=60,
+        help_text="Idle session inactivity duration before re-authentication is enforced."
+    )
+
+    # API & Integration Parameters
+    api_access_enabled = models.BooleanField(
+        default=True,
+        help_text="Enable authenticated REST API access for external institutional systems."
+    )
+    api_key_primary = models.CharField(
+        max_length=64,
+        default="ath_live_8f93e2b10a9c4d7e8b9101112",
+        help_text="Primary institutional bearer token."
+    )
+    webhook_url = models.URLField(
+        blank=True,
+        default="https://api.athenaeum.edu/webhooks/circulation",
+        help_text="Endpoint receiving automated webhook event payloads."
+    )
+
+    # Enterprise Resource Limits & Subscription
+    subscription_tier = models.CharField(
+        max_length=50,
+        default="Enterprise Academic Pro",
+        help_text="Active institution license subscription tier."
+    )
+    storage_allocated_gb = models.PositiveIntegerField(
+        default=50,
+        help_text="Total cloud storage quota allocated in Gigabytes."
+    )
+    storage_used_gb = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=6.85,
+        help_text="Current storage consumption in Gigabytes."
+    )
+    max_active_members = models.PositiveIntegerField(
+        default=5000,
+        help_text="Contracted member account threshold."
+    )
+
+    class Meta:
+        verbose_name = "Enterprise System Configuration"
+        verbose_name_plural = "Enterprise System Configuration"
+
+    @classmethod
+    def get_solo(cls):
+        obj, _ = cls.objects.get_or_create(singleton_id=1)
+        return obj
+
+    def __str__(self):
+        return f"SystemConfig ({self.subscription_tier})"

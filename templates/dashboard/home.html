@@ -1,82 +1,580 @@
 {% extends "base.html" %}
-
-{% comment %}
-  One dashboard address serves both roles. The view puts is_librarian_view
-  in the context and this template branches on it, which means a student
-  cannot reach the librarian panel by guessing a URL: there is no separate
-  URL to guess.
-
-  The panels below are placeholders. The real loan lists, the overdue
-  figures and the analytics charts arrive with the dashboard task. The role
-  split is written out now because that part will not change.
-{% endcomment %}
+{% load static %}
 
 {% block page_title %}Dashboard{% endblock %}
+{% block page_description %}Athenaeum Ikedi library management dashboard.{% endblock %}
 
 {% block content %}
-  <header class="page-head">
-    <h1>
-      {% if is_librarian_view %}Library administration{% else %}Your library{% endif %}
-    </h1>
-    <p class="lede">
-      Signed in as {{ user.get_full_name|default:user.get_username }}
-      ({{ user.get_role_display }}).
-    </p>
-  </header>
+<div class="dashboard-page">
 
   {% if is_librarian_view %}
-    <div class="panel-grid">
-      <section class="panel">
-        <h2>Catalogue</h2>
-        <p>Adding, editing and withdrawing books arrives with the catalogue task.</p>
-        <p><a href="{% url 'catalog:book_list' %}">Browse the catalogue</a></p>
-      </section>
+    {# ================================================================ #}
+    {# LIBRARIAN DASHBOARD                                              #}
+    {# ================================================================ #}
+    <header class="page-head page-head--with-action">
+      <div>
+        <div class="badge-row">
+          <span class="badge badge--primary">Library Administration</span>
+          <span class="badge badge--neutral">{{ total_students }} Students Enrolled</span>
+        </div>
+        <h1>Athenaeum Overview</h1>
+        <p class="lede">
+          Signed in as <strong>{{ user.get_full_name|default:user.get_username }}</strong> &bull; {{ request.user.email }}
+        </p>
+      </div>
 
-      <section class="panel">
-        <h2>Members and loans</h2>
-        <p>The student list, the borrowing records and the returns queue are next.</p>
-      </section>
+      <div class="page-head__action button-group">
+        <a href="{% url 'circulation:desk' %}" class="button button--primary">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+          Loan Desk
+        </a>
+        <a href="{% url 'catalog:book_add' %}" class="button button--secondary">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          Add Book
+        </a>
+      </div>
+    </header>
 
+    {# KPI METRICS GRID #}
+    <section class="stat-grid" aria-label="Library key metrics">
+      <div class="stat-card">
+        <div class="stat-card__header">
+          <span class="stat-card__label">Active Loans</span>
+          <span class="stat-card__icon stat-card__icon--blue">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+          </span>
+        </div>
+        <div class="stat-card__value">{{ active_loans_count }}</div>
+        <div class="stat-card__subtext">{{ borrowed_copies }} total copies checked out</div>
+      </div>
+
+      <div class="stat-card {% if overdue_loans_count > 0 %}stat-card--danger{% endif %}">
+        <div class="stat-card__header">
+          <span class="stat-card__label">Overdue Loans</span>
+          <span class="stat-card__icon stat-card__icon--rose">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+          </span>
+        </div>
+        <div class="stat-card__value">{{ overdue_loans_count }}</div>
+        <div class="stat-card__subtext">
+          {% if overdue_loans_count > 0 %}
+            Requires desk follow-up
+          {% else %}
+            No overdue items
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-card__header">
+          <span class="stat-card__label">Catalogue Titles</span>
+          <span class="stat-card__icon stat-card__icon--emerald">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+          </span>
+        </div>
+        <div class="stat-card__value">{{ total_titles }}</div>
+        <div class="stat-card__subtext">{{ shelf_copies }} copies on shelves ({{ total_copies }} total)</div>
+      </div>
+
+      <div class="stat-card {% if total_fines_owing > 0 %}stat-card--warning{% endif %}">
+        <div class="stat-card__header">
+          <span class="stat-card__label">Fines Outstanding</span>
+          <span class="stat-card__icon stat-card__icon--amber">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="6" x2="12" y2="18"></line><line x1="8" y1="10" x2="16" y2="10"></line><line x1="8" y1="14" x2="16" y2="14"></line></svg>
+          </span>
+        </div>
+        <div class="stat-card__value">&#8358;{{ total_fines_owing|floatformat:2 }}</div>
+        <div class="stat-card__subtext">{{ count_fines_owing }} unpaid fine records</div>
+      </div>
+    </section>
+
+    {# QUICK ACTION HUB #}
+    <section class="section-block">
+      <h2 class="section-title">Administrative Modules</h2>
+      <div class="quick-links-grid">
+        <a href="{% url 'circulation:desk' %}" class="quick-link-card">
+          <div class="quick-link-card__icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+          </div>
+          <div class="quick-link-card__body">
+            <h3>Circulation Desk</h3>
+            <p>Process returns, extend due dates, and monitor loans.</p>
+          </div>
+          <span class="quick-link-card__arrow">&rarr;</span>
+        </a>
+
+        <a href="{% url 'catalog:book_manage' %}" class="quick-link-card">
+          <div class="quick-link-card__icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+          </div>
+          <div class="quick-link-card__body">
+            <h3>Manage Catalogue</h3>
+            <p>Update bibliographic details, quantities, and withdraw books.</p>
+          </div>
+          <span class="quick-link-card__arrow">&rarr;</span>
+        </a>
+
+        <a href="{% url 'accounts:student_list' %}" class="quick-link-card">
+          <div class="quick-link-card__icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+          </div>
+          <div class="quick-link-card__body">
+            <h3>Student Directory</h3>
+            <p>Inspect registered borrowers, individual records, and debts.</p>
+          </div>
+          <span class="quick-link-card__arrow">&rarr;</span>
+        </a>
+
+        <a href="{% url 'circulation:fines' %}" class="quick-link-card">
+          <div class="quick-link-card__icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+          </div>
+          <div class="quick-link-card__body">
+            <h3>Fines Ledger</h3>
+            <p>Collect fine payments and reconcile settled accounts.</p>
+          </div>
+          <span class="quick-link-card__arrow">&rarr;</span>
+        </a>
+
+        <a href="{% url 'circulation:audit_log' %}" class="quick-link-card">
+          <div class="quick-link-card__icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+          </div>
+          <div class="quick-link-card__body">
+            <h3>Audit Trail</h3>
+            <p>Immutable forensic record of all loan, book, and account changes.</p>
+          </div>
+          <span class="quick-link-card__arrow">&rarr;</span>
+        </a>
+
+        <a href="{% url 'catalog:category_manage' %}" class="quick-link-card">
+          <div class="quick-link-card__icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9h16"></path><path d="M4 15h16"></path><path d="M10 3L8 21"></path><path d="M16 3l-2 18"></path></svg>
+          </div>
+          <div class="quick-link-card__body">
+            <h3>Categories & Subjects</h3>
+            <p>Manage classification headings and academic disciplines.</p>
+          </div>
+          <span class="quick-link-card__arrow">&rarr;</span>
+        </a>
+      </div>
+    </section>
+
+    {# OVERDUE LOANS ALERT SECTION #}
+    {% if overdue_loans %}
+      <section class="section-block section-block--bordered">
+        <div class="section-block__header">
+          <div>
+            <h2 class="section-title text-danger">Immediate Action Required: Overdue Loans ({{ overdue_loans|length }})</h2>
+            <p class="section-subtitle">Books held past their designated borrowing due dates.</p>
+          </div>
+          <a href="{% url 'circulation:desk' %}?state=overdue" class="button button--small button--secondary">View all overdue</a>
+        </div>
+
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Student</th>
+                <th>Book Title</th>
+                <th>Due Date</th>
+                <th>Days Late</th>
+                <th>Accrued Fine</th>
+                <th>Desk Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for record in overdue_loans %}
+                <tr>
+                  <td>
+                    <strong>{{ record.student.get_full_name|default:record.student.username }}</strong>
+                    <div class="text-muted text-small">{{ record.student.email }}</div>
+                  </td>
+                  <td>
+                    <a href="{{ record.book.get_absolute_url }}"><strong>{{ record.book.title }}</strong></a>
+                    <div class="text-muted text-small">{{ record.book.author }}</div>
+                  </td>
+                  <td>
+                    <span class="badge badge--danger">{{ record.due_date|date:"j M Y" }}</span>
+                  </td>
+                  <td><strong>{{ record.overdue_days }} day{{ record.overdue_days|pluralize }}</strong></td>
+                  <td><span class="text-danger font-mono">&#8358;{{ record.estimated_fine|floatformat:2 }}</span></td>
+                  <td>
+                    <form method="post" action="{% url 'circulation:return' record.pk %}">
+                      {% csrf_token %}
+                      <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                      <button type="submit" class="button button--small button--primary">Process Return</button>
+                    </form>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    {% endif %}
+
+    {# ANALYTICS & AUDIT SPLIT #}
+    <div class="grid-two-col section-block">
+      {# POPULAR BOOKS #}
       <section class="panel">
-        <h2>Admin site</h2>
-        {% comment %}
-          Reaching the admin depends on is_staff, which is a separate flag
-          from the librarian role, so this link is shown only when the
-          account actually has it. Offering a link that leads to a login
-          wall would be worse than not offering it.
-        {% endcomment %}
-        {% if user.is_staff %}
-          <p><a href="{% url 'admin:index' %}">Open the Django admin</a></p>
+        <div class="panel__header">
+          <h2 class="panel__title">Most Borrowed Works</h2>
+          <a href="{% url 'catalog:book_list' %}" class="action-link">Catalogue &rarr;</a>
+        </div>
+        {% if popular_books %}
+          <ul class="ranked-list">
+            {% for book in popular_books %}
+              <li class="ranked-list__item">
+                <span class="ranked-list__rank">{{ forloop.counter }}</span>
+                <div class="ranked-list__content">
+                  <a href="{{ book.get_absolute_url }}"><strong>{{ book.title }}</strong></a>
+                  <div class="text-muted text-small">{{ book.author }} &bull; {{ book.category.name }}</div>
+                </div>
+                <div class="ranked-list__metric">
+                  <span class="badge badge--neutral">{{ book.borrow_times }} loan{{ book.borrow_times|pluralize }}</span>
+                  {% if book.avg_rating %}
+                    <span class="star-rating text-small">&#9733; {{ book.avg_rating|floatformat:1 }}</span>
+                  {% endif %}
+                </div>
+              </li>
+            {% endfor %}
+          </ul>
         {% else %}
-          <p>Your account does not have admin site access.</p>
+          <p class="text-muted">No circulation records recorded yet.</p>
+        {% endif %}
+      </section>
+
+      {# RECENT AUDIT TRAIL #}
+      <section class="panel">
+        <div class="panel__header">
+          <h2 class="panel__title">Live Activity Trail</h2>
+          <a href="{% url 'circulation:audit_log' %}" class="action-link">Full log &rarr;</a>
+        </div>
+        {% if recent_audit_logs %}
+          <div class="timeline">
+            {% for log in recent_audit_logs %}
+              <div class="timeline__item">
+                <div class="timeline__marker timeline__marker--{{ log.action }}"></div>
+                <div class="timeline__content">
+                  <div class="timeline__header">
+                    <strong>{% if log.user %}{{ log.user.get_full_name|default:log.user.username }}{% else %}System{% endif %}</strong>
+                    <span class="badge badge--small badge--outline">{{ log.get_action_display }}</span>
+                    <time class="timeline__time">{{ log.timestamp|date:"j M, H:i" }}</time>
+                  </div>
+                  <p class="timeline__target">{{ log.target }}</p>
+                  {% if log.detail %}
+                    <p class="timeline__detail text-muted text-small">{{ log.detail|truncatechars:80 }}</p>
+                  {% endif %}
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p class="text-muted">No audit activity logged yet.</p>
         {% endif %}
       </section>
     </div>
+
   {% else %}
-    <div class="panel-grid">
+    {# ================================================================ #}
+    {# STUDENT DASHBOARD                                                #}
+    {# ================================================================ #}
+    <header class="page-head page-head--with-action">
+      <div>
+        <div class="badge-row">
+          <span class="badge badge--primary">Student Member</span>
+          {% if loans_remaining_allowance > 0 %}
+            <span class="badge badge--success">{{ loans_remaining_allowance }} loan slot{{ loans_remaining_allowance|pluralize }} open</span>
+          {% else %}
+            <span class="badge badge--warning">Loan allowance reached</span>
+          {% endif %}
+        </div>
+        <h1>Welcome, {{ user.get_full_name|default:user.get_username }}</h1>
+        <p class="lede">
+          Student ID: <strong>{{ user.username }}</strong> &bull; {{ user.email }}
+        </p>
+      </div>
+
+      <div class="page-head__action button-group">
+        <a href="{% url 'catalog:book_list' %}" class="button button--primary">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          Browse Catalogue
+        </a>
+        <a href="{% url 'circulation:history' %}" class="button button--secondary">
+          Borrowing History
+        </a>
+      </div>
+    </header>
+
+    {# STUDENT KPI METRICS #}
+    <section class="stat-grid" aria-label="Student overview">
+      <div class="stat-card">
+        <div class="stat-card__header">
+          <span class="stat-card__label">Active Books on Loan</span>
+          <span class="stat-card__icon stat-card__icon--blue">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+          </span>
+        </div>
+        <div class="stat-card__value">{{ active_loans_count }} / {{ max_loans }}</div>
+        <div class="stat-card__subtext">
+          {% if loans_remaining_allowance > 0 %}
+            You can borrow {{ loans_remaining_allowance }} more book{{ loans_remaining_allowance|pluralize }}
+          {% else %}
+            Maximum loan allowance reached
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-card__header">
+          <span class="stat-card__label">Active Holds & Reserves</span>
+          <span class="stat-card__icon stat-card__icon--emerald">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+          </span>
+        </div>
+        <div class="stat-card__value">{{ total_reservations_count }} / {{ max_reservations }}</div>
+        <div class="stat-card__subtext">
+          {% if ready_holds %}
+            <strong class="text-success">{{ ready_holds|length }} hold ready for pickup!</strong>
+          {% else %}
+            {{ waiting_holds|length }} in waitlist queue
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="stat-card {% if total_unpaid_fines > 0 %}stat-card--danger{% endif %}">
+        <div class="stat-card__header">
+          <span class="stat-card__label">Fines Owed</span>
+          <span class="stat-card__icon stat-card__icon--amber">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+          </span>
+        </div>
+        <div class="stat-card__value">&#8358;{{ total_unpaid_fines|floatformat:2 }}</div>
+        <div class="stat-card__subtext">
+          {% if total_unpaid_fines > 0 %}
+            Payable at library desk
+          {% else %}
+            Account in good standing
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-card__header">
+          <span class="stat-card__label">Books Borrowed All Time</span>
+          <span class="stat-card__icon stat-card__icon--blue">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          </span>
+        </div>
+        <div class="stat-card__value">{{ total_borrowed_count }}</div>
+        <div class="stat-card__subtext">Completed reading history</div>
+      </div>
+    </section>
+
+    {# READY HOLDS ALERT BANNER #}
+    {% if ready_holds %}
+      <div class="alert-banner alert-banner--success">
+        <div class="alert-banner__icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+        </div>
+        <div class="alert-banner__content">
+          <h3>Your reserved book is ready for collection!</h3>
+          {% for hold in ready_holds %}
+            <p>
+              <strong>{{ hold.book.title }}</strong> is waiting for you at the library desk.
+              Hold expires on <strong>{{ hold.expires_date|date:"j F Y" }}</strong>.
+            </p>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+
+    {# ACTIVE LOANS PANEL #}
+    <section class="section-block">
+      <div class="section-block__header">
+        <div>
+          <h2 class="section-title">Your Current Loans ({{ active_loans|length }})</h2>
+          <p class="section-subtitle">Books currently checked out in your custody.</p>
+        </div>
+        <a href="{% url 'circulation:loans' %}" class="button button--small button--secondary">View full loan details</a>
+      </div>
+
+      {% if active_loans %}
+        <div class="loans-card-grid">
+          {% for loan in active_loans %}
+            <article class="loan-card {% if loan.is_late %}loan-card--overdue{% elif loan.is_due_soon %}loan-card--due-soon{% endif %}">
+              <div class="loan-card__main">
+                <div class="loan-card__cover">
+                  {% if loan.book.cover_image %}
+                    <img src="{{ loan.book.cover_image.url }}" alt="{{ loan.book.title }}" class="book-thumb">
+                  {% else %}
+                    <div class="book-thumb-placeholder">
+                      <span>{{ loan.book.title|slice:":2"|upper }}</span>
+                    </div>
+                  {% endif %}
+                </div>
+
+                <div class="loan-card__info">
+                  <span class="badge badge--small badge--outline">{{ loan.book.category.name }}</span>
+                  <h3 class="loan-card__title">
+                    <a href="{{ loan.book.get_absolute_url }}">{{ loan.book.title }}</a>
+                  </h3>
+                  <p class="loan-card__author">{{ loan.book.author }}</p>
+                  
+                  <div class="loan-card__meta">
+                    <div>
+                      <span class="text-muted text-small">Borrowed:</span>
+                      <strong>{{ loan.borrowed_date|date:"j M Y" }}</strong>
+                    </div>
+                    <div>
+                      <span class="text-muted text-small">Due:</span>
+                      <strong>{{ loan.due_date|date:"j M Y" }}</strong>
+                    </div>
+                  </div>
+
+                  <div class="loan-card__status">
+                    {% if loan.is_late %}
+                      <span class="badge badge--danger">Overdue by {{ loan.overdue_days }} day{{ loan.overdue_days|pluralize }} (Accrued fine: &#8358;{{ loan.estimated_fine|floatformat:2 }})</span>
+                    {% elif loan.is_due_soon %}
+                      <span class="badge badge--warning">Due in {{ loan.days_until_due }} day{{ loan.days_until_due|pluralize }}</span>
+                    {% else %}
+                      <span class="badge badge--success">{{ loan.days_until_due }} days remaining</span>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+
+              <div class="loan-card__actions button-group">
+                <form method="post" action="{% url 'circulation:renew' loan.pk %}">
+                  {% csrf_token %}
+                  <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                  <button type="submit" class="button button--small button--secondary" {% if loan.renewal_count >= 2 or loan.is_late %}title="Renewals limited"{% endif %}>
+                    Renew Loan
+                  </button>
+                </form>
+
+                <form method="post" action="{% url 'circulation:return' loan.pk %}">
+                  {% csrf_token %}
+                  <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                  <button type="submit" class="button button--small button--primary">
+                    Return Book
+                  </button>
+                </form>
+              </div>
+            </article>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty-card">
+          <div class="empty-card__icon">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+          </div>
+          <h3>You have no books on loan</h3>
+          <p>Explore our catalogue to discover monographs, textbooks, and fiction.</p>
+          <a href="{% url 'catalog:book_list' %}" class="button button--primary">Browse Books</a>
+        </div>
+      {% endif %}
+    </section>
+
+    {# RESERVATIONS & FINES SPLIT #}
+    <div class="grid-two-col section-block">
+      {# WAITING QUEUES #}
       <section class="panel">
-        <h2>On loan to you</h2>
-        <p>Your current loans and their due dates will be listed here.</p>
+        <div class="panel__header">
+          <h2 class="panel__title">Waitlist Reservations ({{ waiting_holds|length }})</h2>
+        </div>
+        {% if waiting_holds %}
+          <ul class="plain-list queue-list">
+            {% for hold in waiting_holds %}
+              <li class="queue-item">
+                <div>
+                  <a href="{{ hold.book.get_absolute_url }}"><strong>{{ hold.book.title }}</strong></a>
+                  <div class="text-muted text-small">Reserved on {{ hold.reserved_date|date:"j M Y" }}</div>
+                </div>
+                <div class="queue-item__meta">
+                  <span class="badge badge--neutral">Position #{{ hold.queue_position }} in queue</span>
+                  <form method="post" action="{% url 'circulation:cancel_reservation' hold.pk %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                    <button type="submit" class="button button--quiet button--small text-danger">Cancel</button>
+                  </form>
+                </div>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="text-muted">You are not currently in any reservation queues.</p>
+        {% endif %}
       </section>
 
+      {# FINES & DUES #}
       <section class="panel">
-        <h2>Borrowing history</h2>
-        <p>Everything you have borrowed and returned will be listed here.</p>
-      </section>
-
-      <section class="panel">
-        <h2>Find something to read</h2>
-        <p><a href="{% url 'catalog:book_list' %}">Browse the catalogue</a></p>
+        <div class="panel__header">
+          <h2 class="panel__title">Fines & Penalties</h2>
+          <a href="{% url 'circulation:history' %}" class="action-link">History &rarr;</a>
+        </div>
+        {% if unpaid_fines %}
+          <div class="table-container">
+            <table class="data-table data-table--compact">
+              <thead>
+                <tr>
+                  <th>Book</th>
+                  <th>Returned</th>
+                  <th>Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for fine in unpaid_fines %}
+                  <tr>
+                    <td><strong>{{ fine.book.title }}</strong></td>
+                    <td>{{ fine.returned_date|date:"j M Y" }}</td>
+                    <td><span class="text-danger font-mono">&#8358;{{ fine.fine_amount|floatformat:2 }}</span></td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <div class="panel__footer">
+            <strong>Total Balance Owed: <span class="text-danger font-mono">&#8358;{{ total_unpaid_fines|floatformat:2 }}</span></strong>
+            <p class="text-small text-muted">Please settle outstanding fines at the library circulation desk.</p>
+          </div>
+        {% else %}
+          <div class="good-standing">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-success"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+            <p><strong>Clean Record</strong> &mdash; No outstanding overdue fines on your account.</p>
+          </div>
+        {% endif %}
       </section>
     </div>
+
   {% endif %}
 
-  <section class="panel">
-    <h2>Your account</h2>
-    <ul class="plain-list">
-      <li>Username: {{ user.get_username }}</li>
-      <li>Email: {{ user.email }}</li>
-      <li><a href="{% url 'accounts:password_change' %}">Change your password</a></li>
-    </ul>
+  {# SHARED ACCOUNT SETTINGS PANEL #}
+  <section class="panel section-block">
+    <div class="panel__header">
+      <h2 class="panel__title">Account Credentials & Preferences</h2>
+      <a href="{% url 'accounts:password_change' %}" class="button button--small button--secondary">Change Password</a>
+    </div>
+    <div class="profile-details-grid">
+      <div>
+        <span class="text-muted text-small">Username</span>
+        <div class="font-mono"><strong>{{ user.username }}</strong></div>
+      </div>
+      <div>
+        <span class="text-muted text-small">Email Address</span>
+        <div><strong>{{ user.email }}</strong></div>
+      </div>
+      <div>
+        <span class="text-muted text-small">System Role</span>
+        <div><span class="badge badge--outline">{{ user.get_role_display }}</span></div>
+      </div>
+      <div>
+        <span class="text-muted text-small">Account Created</span>
+        <div>{{ user.date_joined|date:"j F Y" }}</div>
+      </div>
+    </div>
   </section>
+
+</div>
 {% endblock %}

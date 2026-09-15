@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+
+{% block page_title %}{{ student.get_full_name|default:student.username }} | Student Record{% endblock %}
+
+{% block content %}
+<div class="student-profile-page">
+  <header class="page-head page-head--with-action">
+    <div>
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="{% url 'dashboard:home' %}">Dashboard</a>
+        <span class="breadcrumb__sep">/</span>
+        <a href="{% url 'accounts:student_list' %}">Students</a>
+        <span class="breadcrumb__sep">/</span>
+        <span aria-current="page">{{ student.username }}</span>
+      </nav>
+      <div class="badge-row">
+        <span class="badge badge--primary">Student Member</span>
+        {% if student.is_active %}
+          <span class="badge badge--success">Active</span>
+        {% else %}
+          <span class="badge badge--danger">Inactive</span>
+        {% endif %}
+      </div>
+      <h1>{{ student.get_full_name|default:student.username }}</h1>
+      <p class="lede">
+        Username: <strong class="font-mono">{{ student.username }}</strong> &bull; Email: {{ student.email }} &bull; Member since {{ student.date_joined|date:"j F Y" }}
+      </p>
+    </div>
+
+    <div class="page-head__action button-group">
+      <a href="{% url 'circulation:desk' %}" class="button button--secondary">Loan Desk</a>
+      <a href="{% url 'accounts:student_list' %}" class="button button--secondary">All Students</a>
+    </div>
+  </header>
+
+  {# SUMMARY CARDS #}
+  <section class="stat-grid">
+    <div class="stat-card">
+      <div class="stat-card__header">
+        <span class="stat-card__label">Active Loans</span>
+      </div>
+      <div class="stat-card__value">{{ active_loans|length }} / 3</div>
+      <div class="stat-card__subtext">Copies currently in student custody</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-card__header">
+        <span class="stat-card__label">Active Reserves</span>
+      </div>
+      <div class="stat-card__value">{{ active_reservations|length }} / 3</div>
+      <div class="stat-card__subtext">Live queue reservations</div>
+    </div>
+
+    <div class="stat-card {% if total_fines > 0 %}stat-card--danger{% endif %}">
+      <div class="stat-card__header">
+        <span class="stat-card__label">Unpaid Fines Balance</span>
+      </div>
+      <div class="stat-card__value">&#8358;{{ total_fines|floatformat:2 }}</div>
+      <div class="stat-card__subtext">
+        {% if total_fines > 0 %}
+          Requires desk settlement
+        {% else %}
+          Zero balance owed
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-card__header">
+        <span class="stat-card__label">Completed Borrows</span>
+      </div>
+      <div class="stat-card__value">{{ borrowing_history|length }}</div>
+      <div class="stat-card__subtext">Returned works on record</div>
+    </div>
+  </section>
+
+  {# CURRENT LOANS #}
+  <section class="section-block">
+    <div class="section-block__header">
+      <h2 class="section-title">Current Books on Loan</h2>
+    </div>
+
+    {% if active_loans %}
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Book Title & ISBN</th>
+              <th>Borrowed Date</th>
+              <th>Due Date</th>
+              <th>Renewals</th>
+              <th>Status</th>
+              <th>Desk Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for loan in active_loans %}
+              <tr>
+                <td>
+                  <a href="{{ loan.book.get_absolute_url }}"><strong>{{ loan.book.title }}</strong></a>
+                  <div class="text-muted text-small">{{ loan.book.author }} &bull; ISBN: {{ loan.book.isbn }}</div>
+                </td>
+                <td>{{ loan.borrowed_date|date:"j M Y" }}</td>
+                <td><strong>{{ loan.due_date|date:"j M Y" }}</strong></td>
+                <td>{{ loan.renewal_count }} / 2</td>
+                <td>
+                  {% if loan.days_overdue > 0 %}
+                    <span class="badge badge--danger">Overdue ({{ loan.days_overdue }}d)</span>
+                  {% else %}
+                    <span class="badge badge--success">Current</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <div class="button-group">
+                    <form method="post" action="{% url 'circulation:renew' loan.pk %}">
+                      {% csrf_token %}
+                      <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                      <button type="submit" class="button button--small button--secondary">Renew</button>
+                    </form>
+                    <form method="post" action="{% url 'circulation:return' loan.pk %}">
+                      {% csrf_token %}
+                      <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                      <button type="submit" class="button button--small button--primary">Return</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="text-muted">This student does not currently hold any books on loan.</p>
+    {% endif %}
+  </section>
+
+  {# OUTSTANDING FINES #}
+  {% if unpaid_fines %}
+    <section class="section-block section-block--bordered">
+      <div class="section-block__header">
+        <h2 class="section-title text-danger">Unpaid Fine Records</h2>
+        <span class="text-danger font-mono font-bold">Total: &#8358;{{ total_fines|floatformat:2 }}</span>
+      </div>
+
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Loaned Book</th>
+              <th>Due Date</th>
+              <th>Returned Date</th>
+              <th>Fine Amount</th>
+              <th>Settle Debt</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for fine in unpaid_fines %}
+              <tr>
+                <td><strong>{{ fine.book.title }}</strong></td>
+                <td>{{ fine.due_date|date:"j M Y" }}</td>
+                <td>{{ fine.returned_date|date:"j M Y" }}</td>
+                <td><span class="text-danger font-mono font-bold">&#8358;{{ fine.fine_amount|floatformat:2 }}</span></td>
+                <td>
+                  <form method="post" action="{% url 'circulation:fine_paid' fine.pk %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                    <button type="submit" class="button button--small button--primary">Mark Paid</button>
+                  </form>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  {% endif %}
+
+  {# BORROWING HISTORY #}
+  <section class="section-block">
+    <div class="section-block__header">
+      <h2 class="section-title">Recent Borrowing History</h2>
+    </div>
+
+    {% if borrowing_history %}
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Book Title</th>
+              <th>Borrowed Date</th>
+              <th>Returned Date</th>
+              <th>Fine Incurred</th>
+              <th>Fine Paid</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for record in borrowing_history %}
+              <tr>
+                <td>
+                  <a href="{{ record.book.get_absolute_url }}"><strong>{{ record.book.title }}</strong></a>
+                  <div class="text-muted text-small">{{ record.book.author }}</div>
+                </td>
+                <td>{{ record.borrowed_date|date:"j M Y" }}</td>
+                <td>{{ record.returned_date|date:"j M Y" }}</td>
+                <td>
+                  {% if record.fine_amount > 0 %}
+                    &#8358;{{ record.fine_amount|floatformat:2 }}
+                  {% else %}
+                    &mdash;
+                  {% endif %}
+                </td>
+                <td>
+                  {% if record.fine_amount > 0 %}
+                    {% if record.fine_paid %}
+                      <span class="badge badge--success">Settled</span>
+                    {% else %}
+                      <span class="badge badge--danger">Unpaid</span>
+                    {% endif %}
+                  {% else %}
+                    <span class="badge badge--neutral">None</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="text-muted">No historical loans recorded for this member.</p>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

@@ -127,6 +127,8 @@ TEMPLATES = [
                 # or the browser refuses to run it, which is exactly the
                 # protection wanted: injected script cannot guess it.
                 "django.template.context_processors.csp",
+                "dashboard.context_processors.notification_context",
+                "dashboard.context_processors.theme_context",
             ],
         },
     },

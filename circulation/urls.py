@@ -76,4 +76,14 @@ urlpatterns = [
         desk_views.MarkFinePaidView.as_view(),
         name="fine_paid",
     ),
+    path(
+        "desk/audit/",
+        desk_views.AuditLogListView.as_view(),
+        name="audit_log",
+    ),
+    path(
+        "audit/",
+        desk_views.AuditLogListView.as_view(),
+        name="audit",
+    ),
 ]
