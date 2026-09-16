@@ -55,7 +55,8 @@
     <header class="site-header">
       <div class="container site-header__inner">
         <a class="site-header__brand" href="{% url 'home' %}">
-          <img src="{% static 'images/logo-horizontal.png' %}" alt="Athenaeum Ikedi" height="38" class="site-header__logo">
+          <img src="{% static 'images/logo-horizontal.png' %}" alt="Athenaeum Ikedi" height="38" class="site-header__logo site-header__logo--light">
+          <img src="{% static 'images/logo-dark.png' %}" alt="Athenaeum Ikedi" height="38" class="site-header__logo site-header__logo--dark">
         </a>
 
         <button class="site-header__toggle" id="nav-toggle" aria-label="Toggle navigation" aria-expanded="false" aria-controls="site-nav">
