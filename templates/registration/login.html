@@ -1,47 +1,57 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block page_title %}Sign in{% endblock %}
 
 {% block content %}
-  <div class="panel panel--narrow">
-    <h1>Sign in</h1>
-    <p class="lede">Enter your library credentials to reach your dashboard and your loans.</p>
+  <div class="auth-split">
+    {# LEFT: Full-bleed library image #}
+    <div class="auth-split__visual">
+      <img src="{% static 'images/auth-library.jpg' %}" alt="Athenaeum Ikedi Grand Library" class="auth-split__img" loading="eager">
+      <div class="auth-split__overlay">
+        <div class="auth-split__brand">
+          <img src="{% static 'images/logo-mark.png' %}" alt="Athenaeum Ikedi" width="48" height="48" class="auth-split__logo">
+          <h2 class="auth-split__brand-name">Athenaeum Ikedi</h2>
+        </div>
+        <blockquote class="auth-split__quote">
+          "A library is not a luxury but one of the necessities of life."
+          <cite>&mdash; Henry Ward Beecher</cite>
+        </blockquote>
+      </div>
+    </div>
 
-    {% comment %}
-      No action attribute, so the form posts back to the address it was
-      served from. That keeps the next parameter intact if the person
-      arrived here by trying to open a page that required a login.
-    {% endcomment %}
-    <form method="post" novalidate>
-      {% comment %}
-        Without this token Django's CsrfViewMiddleware rejects the post.
-        The token proves the form was served by this site, which is what
-        stops another site from posting to it on a signed in person's
-        behalf.
-      {% endcomment %}
-      {% csrf_token %}
+    {# RIGHT: Sign-in form #}
+    <div class="auth-split__form-side">
+      <div class="auth-card">
+        <div class="auth-card__header">
+          <span class="badge badge--outline" style="letter-spacing: 0.08em; font-size: 0.7rem;">PATRON ACCESS</span>
+          <h1 class="auth-card__title">Welcome Back</h1>
+          <p class="auth-card__subtitle">Sign in to access your dashboard, loans, and library services.</p>
+        </div>
 
-      {% include "includes/form_fields.html" %}
+        <form method="post" novalidate class="auth-card__form">
+          {% csrf_token %}
 
-      {% comment %}
-        Carries forward the page the person was trying to reach when the
-        login was demanded, so they land there instead of on the dashboard.
-        Django validates this value against the allowed hosts before
-        redirecting, so a crafted link cannot use it to bounce a freshly
-        signed in member off to another site.
-      {% endcomment %}
-      {% if next %}
-        <input type="hidden" name="next" value="{{ next }}">
-      {% endif %}
+          {% include "includes/form_fields.html" %}
 
-      <button type="submit" class="button">Sign in</button>
-    </form>
+          {% if next %}
+            <input type="hidden" name="next" value="{{ next }}">
+          {% endif %}
 
-    <p class="panel__footnote">
-      <a href="{% url 'accounts:password_reset' %}">Forgotten your password?</a>
-    </p>
-    <p class="panel__footnote">
-      No account yet? <a href="{% url 'accounts:register' %}">Join the library</a>.
-    </p>
+          <button type="submit" class="button button--primary auth-card__submit">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" y1="12" x2="3" y2="12"></line></svg>
+            Sign in to Library
+          </button>
+        </form>
+
+        <div class="auth-card__footer">
+          <a href="{% url 'accounts:password_reset' %}" class="auth-card__link">Forgotten your password?</a>
+          <div class="auth-card__divider">
+            <span>New to the Athenaeum?</span>
+          </div>
+          <a href="{% url 'accounts:register' %}" class="button button--secondary auth-card__alt-action">Create a Student Account</a>
+        </div>
+      </div>
+    </div>
   </div>
 {% endblock %}
