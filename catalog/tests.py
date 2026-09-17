@@ -6,10 +6,12 @@ from datetime import date
 from django.core.exceptions import ValidationError
 from django.test import Client, TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from accounts.models import User
 from catalog.models import Book, Category, Review
 from catalog.validators import validate_isbn
+from circulation.models import BorrowRecord
 
 
 class ISBNValidatorTests(TestCase):
@@ -99,3 +101,58 @@ class CatalogViewsTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Chinua Achebe")
         self.assertContains(response, "9780385474542")
+
+    def test_digital_url_helpers(self):
+        # ISBN is 9780385474542
+        self.assertEqual(self.book.bare_isbn_clean, "9780385474542")
+        self.assertEqual(
+            self.book.open_library_url,
+            "https://openlibrary.org/isbn/9780385474542"
+        )
+        self.assertIn("isbn%3A9780385474542", self.book.internet_archive_url)
+        # Default effective_digital_url falls back to open library
+        self.assertEqual(self.book.effective_digital_url, self.book.open_library_url)
+        self.assertFalse(self.book.has_custom_digital)
+
+        # Custom digital_url takes precedence over Open Library fallback
+        self.book.digital_url = "https://www.gutenberg.org/ebooks/1234"
+        self.book.save()
+        self.assertEqual(self.book.effective_digital_url, "https://www.gutenberg.org/ebooks/1234")
+        self.assertTrue(self.book.has_custom_digital)
+
+    def test_book_detail_digital_section_anonymous(self):
+        # Guests should see the invitation to sign in to borrow
+        response = self.client.get(self.book.get_absolute_url())
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Digital Reading &amp; E-Book Edition")
+        self.assertContains(response, "Sign In to Borrow")
+        self.assertNotContains(response, "Open on Open Library &rarr;")
+
+    def test_book_detail_borrow_to_read_lifecycle(self):
+        # 1. Student logged in, but has NOT borrowed this book yet -> LOCKED
+        self.client.force_login(self.student)
+        response = self.client.get(self.book.get_absolute_url())
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Borrow-to-Read")
+        self.assertContains(response, "unlocked while you have this book on loan")
+        self.assertNotContains(response, "Open on Open Library &rarr;")
+
+        # 2. Student borrows the book -> UNLOCKED
+        loan = BorrowRecord.objects.create(
+            student=self.student,
+            book=self.book,
+            due_date=date.today() + timezone.timedelta(days=14),
+        )
+        response_borrowed = self.client.get(self.book.get_absolute_url())
+        self.assertEqual(response_borrowed.status_code, 200)
+        self.assertContains(response_borrowed, "Digital Access Unlocked")
+        self.assertContains(response_borrowed, "Open on Open Library &rarr;")
+        self.assertContains(response_borrowed, "Search Internet Archive")
+
+        # 3. Student returns the book -> RE-LOCKED
+        loan.returned_date = timezone.now()
+        loan.save()
+        response_returned = self.client.get(self.book.get_absolute_url())
+        self.assertEqual(response_returned.status_code, 200)
+        self.assertContains(response_returned, "Borrow-to-Read")
+        self.assertNotContains(response_returned, "Open on Open Library &rarr;")

@@ -182,6 +182,96 @@
       </div>
 
       {% comment %}
+        Digital Reading Room & Open Library Integration.
+        Borrow-to-Read Model: Digital reading is unlocked while the student has an active loan.
+      {% endcomment %}
+      <div class="book-detail__digital">
+        <h3 class="digital-heading">
+          <span class="digital-icon" aria-hidden="true">📖</span>
+          Digital Reading &amp; E-Book Edition
+        </h3>
+
+        {% if can_read_digital %}
+          {% if has_active_loan %}
+            <p class="status status--available" style="margin-bottom: 0.75rem;">
+              ✓ You currently have this book on loan &mdash; Digital Access Unlocked
+            </p>
+          {% elif user.is_librarian or user.is_superuser %}
+            <p class="status status--available" style="margin-bottom: 0.75rem;">
+              🔑 Librarian / Admin Preview Access
+            </p>
+          {% endif %}
+
+          <p class="digital-description">
+            Read this title online or access digital copies via Open Library and institutional sources during your loan.
+          </p>
+          <div class="digital-actions">
+            {% if book.digital_file %}
+              <a href="{{ book.digital_file.url }}"
+                 class="button button--primary"
+                 download
+                 target="_blank"
+                 rel="noopener noreferrer">
+                Download E-Book / PDF
+              </a>
+            {% endif %}
+
+            {% if book.digital_url %}
+              <a href="{{ book.digital_url }}"
+                 class="button button--secondary"
+                 target="_blank"
+                 rel="noopener noreferrer">
+                Read Online (Direct Edition) &rarr;
+              </a>
+            {% endif %}
+
+            <a href="{{ book.open_library_url }}"
+               class="button button--quiet"
+               target="_blank"
+               rel="noopener noreferrer"
+               title="Look up and borrow/read on Open Library">
+              Open on Open Library &rarr;
+            </a>
+
+            <a href="{{ book.internet_archive_url }}"
+               class="digital-sublink"
+               target="_blank"
+               rel="noopener noreferrer">
+              Search Internet Archive
+            </a>
+          </div>
+          <p class="panel__footnote">
+            Digital loans and full text view open in a secure new tab via Open Library / Internet Archive.
+          </p>
+        {% else %}
+          <div class="digital-locked-box">
+            {% if user.is_authenticated and user.is_student %}
+              <p class="digital-locked-text">
+                🔒 <strong>Borrow-to-Read:</strong> Digital reading editions and PDF downloads are unlocked while you have this book on loan.
+              </p>
+              {% if book.is_available %}
+                <p class="panel__footnote" style="margin: 0;">
+                  Click <strong>"Borrow this book"</strong> above to checkout your copy and start reading immediately.
+                </p>
+              {% else %}
+                <p class="panel__footnote" style="margin: 0;">
+                  Every copy is currently on loan. Join the queue above to be notified when a copy is returned.
+                </p>
+              {% endif %}
+            {% else %}
+              <p class="digital-locked-text">
+                🔒 <strong>Members Only:</strong> Digital reading editions and downloads are unlocked when borrowed by registered library members.
+              </p>
+              <p class="digital-locked-links">
+                <a class="button button--quiet" href="{% url 'accounts:login' %}?next={{ request.path }}">Sign In to Borrow</a>
+                <a class="button" href="{% url 'accounts:register' %}?next={{ request.path }}">Join the Library</a>
+              </p>
+            {% endif %}
+          </div>
+        {% endif %}
+      </div>
+
+      {% comment %}
         A librarian reading a book's page can correct it from there. Both
         views check permission themselves, so these links are a shortcut and
         not the thing keeping students out of them.

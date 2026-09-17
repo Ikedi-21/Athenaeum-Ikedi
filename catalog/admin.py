@@ -124,6 +124,10 @@ class BookAdmin(admin.ModelAdmin):
             {"fields": ("description", "published_date", "cover_image")},
         ),
         (
+            "Digital & Open Access Edition",
+            {"fields": ("digital_url", "digital_file")},
+        ),
+        (
             "Copies",
             {"fields": ("quantity", "available_quantity", "borrowed_count")},
         ),
@@ -139,6 +143,10 @@ class BookAdmin(admin.ModelAdmin):
         (
             "The book itself",
             {"fields": ("description", "published_date", "cover_image")},
+        ),
+        (
+            "Digital & Open Access Edition",
+            {"fields": ("digital_url", "digital_file")},
         ),
         ("Copies", {"fields": ("quantity",)}),
         ("In the collection", {"fields": ("is_active",)}),

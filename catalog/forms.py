@@ -45,6 +45,8 @@ class BookForm(forms.ModelForm):
             "description",
             "quantity",
             "cover_image",
+            "digital_url",
+            "digital_file",
         ]
         widgets = {
             # type="date" gives the browser's own date picker, and the
@@ -139,6 +141,18 @@ class BookForm(forms.ModelForm):
                 code="fewer_than_on_loan",
             )
         return quantity
+
+    def clean_digital_file(self):
+        """Ensure uploaded document is a valid e-book or PDF file."""
+        uploaded = self.cleaned_data.get("digital_file")
+        if uploaded and hasattr(uploaded, "name"):
+            valid_extensions = (".pdf", ".epub", ".mobi")
+            if not any(uploaded.name.lower().endswith(ext) for ext in valid_extensions):
+                raise forms.ValidationError(
+                    "Uploaded document must be a PDF or EPUB file (.pdf, .epub).",
+                    code="invalid_ebook_format",
+                )
+        return uploaded
 
 
 class CategoryForm(forms.ModelForm):

@@ -51,6 +51,7 @@
   {# Outside the link above, so the category is its own destination rather than being swallowed by the book link. #}
   <p class="book-card__meta">
     <a class="tag" href="{{ book.category.get_absolute_url }}">{{ book.category.name }}</a>
+    <span class="tag tag--digital" title="Digital access available via Open Library or direct download">📖 E-Book</span>
   </p>
 
   {% comment %}

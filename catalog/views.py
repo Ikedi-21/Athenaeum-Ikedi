@@ -441,6 +441,20 @@ class BookDetailView(FormMixin, DetailView):
             kwargs.setdefault("existing_review", self.get_existing_review())
         else:
             kwargs.setdefault("form", None)
+
+        user = self.request.user
+        has_active_loan = False
+        can_read_digital = False
+        if user.is_authenticated:
+            if hasattr(user, "borrow_records"):
+                has_active_loan = user.borrow_records.filter(
+                    book=self.object, returned_date__isnull=True
+                ).exists()
+            is_staff_or_admin = getattr(user, "is_librarian", False) or user.is_superuser
+            can_read_digital = has_active_loan or is_staff_or_admin
+
+        kwargs["has_active_loan"] = has_active_loan
+        kwargs["can_read_digital"] = can_read_digital
         return super().get_context_data(**kwargs)
 
     def post(self, request, *args, **kwargs):

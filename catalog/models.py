@@ -9,7 +9,7 @@ from django.db import models
 from django.urls import reverse
 from django.utils.text import slugify
 
-from .validators import validate_isbn
+from .validators import bare_isbn, validate_isbn
 
 
 class Category(models.Model):
@@ -113,6 +113,21 @@ class Book(models.Model):
         help_text="Optional. A placeholder is shown when this is empty.",
     )
 
+    digital_url = models.URLField(
+        max_length=500,
+        blank=True,
+        help_text=(
+            "Optional direct link to an online edition, Project Gutenberg, "
+            "or an external repository."
+        ),
+    )
+
+    digital_file = models.FileField(
+        upload_to="book_digital/",
+        blank=True,
+        help_text="Optional open-access PDF or EPUB document for direct reading/download.",
+    )
+
     # auto_now_add stamps this once at creation and never touches it
     # again, which is what the recently added section needs.
     added_date = models.DateTimeField(auto_now_add=True)
@@ -163,6 +178,40 @@ class Book(models.Model):
     def borrowed_count(self):
         """How many copies are currently out on loan."""
         return self.quantity - self.available_quantity
+
+    @property
+    def bare_isbn_clean(self):
+        """The digits and check character of the ISBN without whitespace or hyphens."""
+        return bare_isbn(self.isbn)
+
+    @property
+    def open_library_url(self):
+        """Direct link to this book's page on Open Library."""
+        return f"https://openlibrary.org/isbn/{self.bare_isbn_clean}"
+
+    @property
+    def internet_archive_url(self):
+        """Search query link for this book on Internet Archive."""
+        return f"https://archive.org/search?query=isbn%3A{self.bare_isbn_clean}"
+
+    @property
+    def effective_digital_url(self):
+        """
+        The primary digital destination:
+        1. Custom uploaded file URL if present
+        2. Custom external URL if provided
+        3. Fallback to Open Library
+        """
+        if self.digital_file:
+            return self.digital_file.url
+        if self.digital_url:
+            return self.digital_url
+        return self.open_library_url
+
+    @property
+    def has_custom_digital(self):
+        """True if the librarian has uploaded a file or specified a custom URL."""
+        return bool(self.digital_file or self.digital_url)
 
 
 class Review(models.Model):

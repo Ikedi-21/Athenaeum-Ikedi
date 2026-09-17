@@ -108,6 +108,14 @@
                 the same rules and the first one to disagree. So the button
                 is offered and the refusal explains itself.
               {% endcomment %}
+              <a href="{{ loan.book.effective_digital_url }}"
+                 class="button button--small button--secondary"
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 title="Read digital edition or download PDF">
+                Read
+              </a>
+
               <form method="post"
                     action="{% url 'circulation:renew' loan.pk %}">
                 {% csrf_token %}
