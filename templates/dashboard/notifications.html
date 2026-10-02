@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block page_title %}Notifications{% endblock %}
+{% block page_description %}Manage and view all your library notifications and updates.{% endblock %}
+
+{% block content %}
+<div class="notifications-page">
+  <header class="page-head page-head--with-action">
+    <div>
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="{% url 'dashboard:home' %}">Dashboard</a>
+        <span class="breadcrumb__sep">/</span>
+        <span aria-current="page">Notifications</span>
+      </nav>
+      <h1>Notifications</h1>
+      <p class="lede">
+        {% if unread_count > 0 %}
+          You have <strong>{{ unread_count }}</strong> unread notification{{ unread_count|pluralize }}.
+        {% else %}
+          You have no unread notifications.
+        {% endif %}
+      </p>
+    </div>
+
+    {% if unread_count > 0 %}
+      <div class="page-head__action">
+        <form method="post" action="{% url 'dashboard:notifications_read_all' %}">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <button type="submit" class="button button--secondary">Mark all as read</button>
+        </form>
+      </div>
+    {% endif %}
+  </header>
+
+  <div class="filter-tabs">
+    <a href="{% url 'dashboard:notifications' %}" class="filter-tab {% if filter_type != 'unread' %}filter-tab--active{% endif %}">
+      All
+    </a>
+    <a href="{% url 'dashboard:notifications' %}?filter=unread" class="filter-tab {% if filter_type == 'unread' %}filter-tab--active{% endif %}">
+      Unread {% if unread_count > 0 %}<span class="badge badge--pill">{{ unread_count }}</span>{% endif %}
+    </a>
+  </div>
+
+  {% if page_obj.object_list %}
+    <div class="notifications-list">
+      {% for item in page_obj.object_list %}
+        <article class="notification-card {% if not item.is_read %}notification-card--unread{% endif %}">
+          <div class="notification-card__icon notification-card__icon--{{ item.kind }}">
+            {% if item.kind == 'overdue' %}
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            {% elif item.kind == 'due_soon' %}
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            {% elif item.kind == 'reservation_ready' or item.kind == 'fine_cleared' %}
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+            {% elif item.kind == 'fine_charged' %}
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            {% else %}
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+            {% endif %}
+          </div>
+
+          <div class="notification-card__body">
+            <div class="notification-card__header">
+              <span class="badge badge--small badge--{{ item.kind }}">{{ item.get_kind_display }}</span>
+              <time class="notification-card__time" datetime="{{ item.created_date|date:'c' }}">
+                {{ item.created_date|date:"j M Y, H:i" }}
+              </time>
+            </div>
+            <p class="notification-card__message">{{ item.message }}</p>
+            {% if item.link %}
+              <div class="notification-card__action">
+                <a href="{{ item.link }}" class="action-link">View details &rarr;</a>
+              </div>
+            {% endif %}
+          </div>
+
+          {% if not item.is_read %}
+            <div class="notification-card__actions">
+              <form method="post" action="{% url 'dashboard:notification_read' item.pk %}">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                <button type="submit" class="button button--small button--quiet" title="Mark as read">
+                  Mark read
+                </button>
+              </form>
+            </div>
+          {% endif %}
+        </article>
+      {% endfor %}
+    </div>
+
+    {% if page_obj.has_other_pages %}
+      <nav class="pagination" aria-label="Notifications pagination">
+        {% if page_obj.has_previous %}
+          <a class="button button--small button--secondary" href="?{% if filter_type == 'unread' %}filter=unread&{% endif %}page={{ page_obj.previous_page_number }}">&larr; Previous</a>
+        {% endif %}
+        <span class="pagination__current">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        {% if page_obj.has_next %}
+          <a class="button button--small button--secondary" href="?{% if filter_type == 'unread' %}filter=unread&{% endif %}page={{ page_obj.next_page_number }}">Next &rarr;</a>
+        {% endif %}
+      </nav>
+    {% endif %}
+
+  {% else %}
+    <div class="empty-state">
+      <div class="empty-state__icon">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+      </div>
+      <h3>No notifications to display</h3>
+      <p>
+        {% if filter_type == 'unread' %}
+          You have read all your notifications.
+        {% else %}
+          You don't have any notifications yet. When loans become due or holds are ready, you will see alerts here.
+        {% endif %}
+      </p>
+      <div class="empty-state__action">
+        <a href="{% url 'dashboard:home' %}" class="button button--secondary">Return to dashboard</a>
+      </div>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

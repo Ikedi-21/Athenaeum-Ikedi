@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% comment %}
+  The librarian's view of the catalogue.
+
+  A table rather than the grid of cards the public list uses, because the job
+  here is different. A reader is browsing and wants covers; a librarian is
+  looking for one particular row in order to change it, and a table puts the
+  same field in the same place on every line so the eye can run down a column.
+
+  Withdrawn books appear here and nowhere else. BookManageListView widens the
+  queryset to include them, which is what makes them reachable: a withdrawn
+  book that could not be found could never be restored either.
+
+  The search, category and sort controls are the same include the public list
+  uses, driven by the same mixin, so a librarian who has learned one search
+  box has learned both.
+{% endcomment %}
+
+{% block page_title %}Manage the catalogue{% endblock %}
+
+{% block content %}
+  <header class="page-head">
+    <h1>Manage the catalogue</h1>
+    <p class="lede">
+      Every book the library owns, including the ones withdrawn from lending.
+    </p>
+
+    <p class="page-head__tools">
+      <a class="button" href="{% url 'catalog:book_add' %}">Add a book</a>
+      <a href="{% url 'catalog:category_manage' %}">Manage categories</a>
+      <a href="{% url 'catalog:book_list' %}">See the public shelf</a>
+    </p>
+  </header>
+
+  {% include "includes/book_filters.html" %}
+
+  <p class="result-count" role="status">
+    {{ paginator.count }} book{{ paginator.count|pluralize }}
+  </p>
+
+  {% comment %}
+    The caption names the table for a screen reader, which announces it when
+    the table is reached. scope on each header cell is what ties a column of
+    values to the heading above it, so a reader moving cell by cell is told
+    which column it is in rather than hearing a bare number.
+  {% endcomment %}
+  <table class="data-table">
+    <caption class="data-table__caption">
+      Books in the catalogue, {{ paginator.count }} in total
+    </caption>
+    <thead>
+      <tr>
+        <th scope="col">Title</th>
+        <th scope="col">Author</th>
+        <th scope="col">Category</th>
+        <th scope="col">On the shelf</th>
+        <th scope="col">Status</th>
+        <th scope="col">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for book in books %}
+        <tr class="{% if not book.is_active %}is-withdrawn{% endif %}">
+          <th scope="row">
+            {# The row heading is the title, which is the thing that identifies the row, and it links to the public page. #}
+            <a href="{{ book.get_absolute_url }}">{{ book.title }}</a>
+          </th>
+          <td>{{ book.author }}</td>
+          <td>{{ book.category.name }}</td>
+          <td>
+            {% comment %}
+              Both numbers, because the pair is what tells the story. Five
+              owned with two on the shelf means three are out with students,
+              and that is the figure that decides whether a book can be
+              withdrawn quietly.
+            {% endcomment %}
+            {{ book.available_quantity }} of {{ book.quantity }}
+          </td>
+          <td>
+            {% if book.is_active %}
+              <span class="status status--available">Lending</span>
+            {% else %}
+              <span class="status status--out">Withdrawn</span>
+            {% endif %}
+          </td>
+          <td class="data-table__actions">
+            <a href="{% url 'catalog:book_edit' book.pk %}">Edit</a>
+
+            {% if book.is_active %}
+              {% comment %}
+                Withdrawing goes through a confirmation page, because it
+                cancels the holds of everybody queueing for the book and
+                that is not something to do on one click. The page names
+                them before asking.
+              {% endcomment %}
+              <a href="{% url 'catalog:book_withdraw' book.pk %}">Withdraw</a>
+            {% else %}
+              {% comment %}
+                Restoring is a button and not a link, on purpose. It changes
+                state, and anything that follows links, a crawler or a
+                browser prefetching what it thinks you will click, would
+                otherwise be able to put books back on the shelf by reading
+                this page. BookRestoreView has no get method at all, so such
+                a request is answered with 405 rather than being obeyed.
+
+                No confirmation page for this one, because there is nothing
+                to warn about: it adds a book back and takes nothing away.
+              {% endcomment %}
+              <form method="post"
+                    action="{% url 'catalog:book_restore' book.pk %}">
+                {% csrf_token %}
+                <button type="submit" class="button button--small">
+                  Restore
+                </button>
+              </form>
+            {% endif %}
+          </td>
+        </tr>
+      {% empty %}
+        <tr>
+          <td colspan="6" class="empty-state">
+            {% if search_term or selected_category %}
+              <p>No book matches that.</p>
+              <p><a href="{{ request.path }}">Clear the search and filters</a>.</p>
+            {% else %}
+              <p>
+                The catalogue is empty.
+                <a href="{% url 'catalog:book_add' %}">Add the first book</a>.
+              </p>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% include "includes/pagination.html" with pagination_label="Catalogue pages" %}
+{% endblock %}

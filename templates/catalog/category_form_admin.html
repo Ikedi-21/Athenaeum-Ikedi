@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% comment %}
+  The add and edit form for a subject heading, one template for both.
+
+  CategoryCreateView and CategoryUpdateView both render this and both pass a
+  heading and a submit_label through the context, so neither page can drift
+  away from the other.
+
+  The slug is not on the form. Category.save builds one from the name the
+  first time and leaves it alone afterwards, so an address already printed on
+  a reading list keeps working when a name is corrected. CategoryForm refuses
+  a name that would build the same address as an existing heading, and a name
+  with no letters or numbers in it at all, since that would build no address.
+{% endcomment %}
+
+{% block page_title %}{{ heading }}{% endblock %}
+
+{% block content %}
+  <header class="page-head">
+    <h1>{{ heading }}</h1>
+    <p class="page-head__back">
+      <a href="{% url 'catalog:category_manage' %}">Back to categories</a>
+    </p>
+  </header>
+
+  <div class="panel">
+    {% comment %}
+      No enctype here, unlike the book form: there is no file to upload, and
+      the default encoding is the right one for a form of text.
+
+      novalidate so that every message comes from Django rather than some of
+      them coming from the browser in different words.
+    {% endcomment %}
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {% include "includes/form_fields.html" %}
+
+      {% comment %}
+        Shown only while editing, because a heading being created has no
+        address yet to explain. form.instance.slug is empty on an unsaved
+        one, so this test needs nothing else to tell the two cases apart.
+      {% endcomment %}
+      {% if form.instance.slug %}
+        <p class="panel__footnote">
+          This category is at
+          <code>{{ form.instance.get_absolute_url }}</code>,
+          and renaming it will not change that.
+        </p>
+      {% endif %}
+
+      <div class="form-actions">
+        <button type="submit" class="button">{{ submit_label }}</button>
+        <a class="button button--quiet"
+           href="{% url 'catalog:category_manage' %}">Cancel</a>
+      </div>
+    </form>
+  </div>
+{% endblock %}

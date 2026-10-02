@@ -1,0 +1,39 @@
+{% load static %}<!DOCTYPE html>
+{% comment %}
+  Shown when a view raises an unhandled exception and DEBUG is False.
+
+  This one deliberately does not extend base.html. Django renders the 500
+  page without a request object, so no context processor runs and there is
+  no user, no messages and no CSP nonce. More importantly, if whatever
+  caused the error lives in base.html or in a context processor, extending
+  it would fail a second time and the visitor would be left with Django's
+  bare fallback text instead. A self contained page cannot fail that way.
+
+  Nothing about the error is shown. The traceback goes to the server log and
+  to the ADMINS email, where it is useful, and stays off a page a stranger
+  can read, where it would describe the internals of the site.
+{% endcomment %}
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Something went wrong | Athenaeum Ikedi</title>
+    <link rel="icon" href="{% static 'images/icons/favicon.ico' %}" sizes="any">
+    <link rel="stylesheet" href="{% static 'css/base.css' %}">
+  </head>
+  <body>
+    <main class="container site-main">
+      <div class="panel panel--narrow">
+        <h1>Something went wrong</h1>
+        <p>
+          The library ran into a problem handling that request. It has been
+          logged, and nothing you were doing has been lost apart from this
+          page.
+        </p>
+        <p>
+          <a class="button" href="{% url 'catalog:book_list' %}">Browse the catalogue</a>
+        </p>
+      </div>
+    </main>
+  </body>
+</html>

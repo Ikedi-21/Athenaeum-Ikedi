@@ -1,0 +1,61 @@
+{% comment %}
+  Renders any form the same way, so the login, registration, password
+  change and password reset pages do not each carry their own copy of the
+  markup. A change to how a field or an error looks is made once, here.
+
+  The form is walked field by field rather than being printed with
+  {{ form }}, because the default output gives no control over labels,
+  help text or error placement, and none of it is accessible without a
+  label tied to its input by id.
+{% endcomment %}
+
+{% comment %}
+  Errors that belong to the form as a whole rather than to one field.
+  "Please enter a correct username and password" is one, and so is the
+  rate limit notice added by the login and registration views. role=alert
+  makes a screen reader announce it as soon as the page loads, which is
+  the point of an error the reader has not yet reached.
+{% endcomment %}
+{% if form.non_field_errors %}
+  <ul class="form-errors" role="alert">
+    {% for error in form.non_field_errors %}
+      <li>{{ error }}</li>
+    {% endfor %}
+  </ul>
+{% endif %}
+
+{% for field in form %}
+  <div class="field{% if field.errors %} field--invalid{% endif %}">
+    {% comment %}
+      id_for_label matches the id Django gives the widget, which is what
+      ties this label to its input. Clicking the label then focuses the
+      field, and a screen reader reads the label when the field is
+      reached.
+    {% endcomment %}
+    <label class="field__label" for="{{ field.id_for_label }}">
+      {{ field.label }}
+      {% if field.field.required %}
+        {# The asterisk is decoration for sighted readers. The required attribute on the input itself is what a screen reader announces, so this is hidden from it to avoid the same thing being said twice. #}
+        <span class="field__required" aria-hidden="true">*</span>
+      {% endif %}
+    </label>
+
+    {# Prints the widget itself, with whatever attributes the form defined. #}
+    {{ field }}
+
+    {% if field.help_text %}
+      {% comment %}
+        The safe filter is applied for the same reason Django's own field
+        template applies it: help text is written in model and form code,
+        never supplied by a user, and some of it is deliberate HTML. The
+        password field's help text is the list of validator rules, which
+        arrives as a <ul> and would otherwise be printed as visible tags.
+      {% endcomment %}
+      <p class="field__help">{{ field.help_text|safe }}</p>
+    {% endif %}
+
+    {% for error in field.errors %}
+      <p class="field__error">{{ error }}</p>
+    {% endfor %}
+  </div>
+{% endfor %}

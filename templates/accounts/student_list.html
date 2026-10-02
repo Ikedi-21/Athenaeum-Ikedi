@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block page_title %}Student Directory{% endblock %}
+{% block page_description %}Manage and inspect registered library students, active loans, and accounts.{% endblock %}
+
+{% block content %}
+<div class="students-page">
+  <header class="page-head page-head--with-action">
+    <div>
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="{% url 'dashboard:home' %}">Dashboard</a>
+        <span class="breadcrumb__sep">/</span>
+        <span aria-current="page">Student Directory</span>
+      </nav>
+      <h1>Student Directory</h1>
+      <p class="lede">
+        {{ total_student_count }} registered student member{{ total_student_count|pluralize }} enrolled in Athenaeum Ikedi.
+      </p>
+    </div>
+
+    <div class="page-head__action">
+      <a href="{% url 'circulation:desk' %}" class="button button--secondary">Loan Desk</a>
+    </div>
+  </header>
+
+  {# SEARCH & FILTER BAR #}
+  <div class="filter-bar">
+    <form method="get" class="search-form" role="search">
+      <div class="search-input-group">
+        <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="search" name="q" value="{{ query }}" placeholder="Search by name, student username, or email..." class="form-input">
+        {% if status != 'all' %}
+          <input type="hidden" name="status" value="{{ status }}">
+        {% endif %}
+        <button type="submit" class="button button--primary button--small">Search</button>
+      </div>
+      {% if query %}
+        <a href="{% url 'accounts:student_list' %}" class="action-link text-small">Clear search</a>
+      {% endif %}
+    </form>
+
+    <div class="filter-tabs">
+      <a href="?status=all{% if query %}&q={{ query }}{% endif %}" class="filter-tab {% if status == 'all' %}filter-tab--active{% endif %}">
+        All Members
+      </a>
+      <a href="?status=with_loans{% if query %}&q={{ query }}{% endif %}" class="filter-tab {% if status == 'with_loans' %}filter-tab--active{% endif %}">
+        Holding Books
+      </a>
+      <a href="?status=with_fines{% if query %}&q={{ query }}{% endif %}" class="filter-tab {% if status == 'with_fines' %}filter-tab--active{% endif %}">
+        Owing Fines
+      </a>
+    </div>
+  </div>
+
+  {# STUDENTS TABLE #}
+  {% if students %}
+    <div class="table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Student Name & Username</th>
+            <th>Email</th>
+            <th>Active Loans</th>
+            <th>All-Time Borrows</th>
+            <th>Fines Balance</th>
+            <th>Joined</th>
+            <th>Profile</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for member in students %}
+            <tr>
+              <td>
+                <a href="{% url 'accounts:student_detail' member.pk %}">
+                  <strong>{{ member.get_full_name|default:member.username }}</strong>
+                </a>
+                <div class="text-muted text-small font-mono">@{{ member.username }}</div>
+              </td>
+              <td>{{ member.email }}</td>
+              <td>
+                {% if member.active_loans_count > 0 %}
+                  <span class="badge badge--primary">{{ member.active_loans_count }} loan{{ member.active_loans_count|pluralize }}</span>
+                {% else %}
+                  <span class="text-muted">0</span>
+                {% endif %}
+              </td>
+              <td>{{ member.total_borrowed_count }}</td>
+              <td>
+                {% if member.fines_owed and member.fines_owed > 0 %}
+                  <span class="text-danger font-mono font-bold">&#8358;{{ member.fines_owed|floatformat:2 }}</span>
+                {% else %}
+                  <span class="text-success text-small">&#10003; Clear</span>
+                {% endif %}
+              </td>
+              <td>{{ member.date_joined|date:"j M Y" }}</td>
+              <td>
+                <a href="{% url 'accounts:student_detail' member.pk %}" class="button button--small button--secondary">View Record</a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if is_paginated %}
+      <nav class="pagination" aria-label="Student list pagination">
+        {% if page_obj.has_previous %}
+          <a class="button button--small button--secondary" href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query }}{% endif %}{% if status != 'all' %}&status={{ status }}{% endif %}">&larr; Previous</a>
+        {% endif %}
+        <span class="pagination__current">Page {{ page_obj.number }} of {{ paginator.num_pages }}</span>
+        {% if page_obj.has_next %}
+          <a class="button button--small button--secondary" href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query }}{% endif %}{% if status != 'all' %}&status={{ status }}{% endif %}">Next &rarr;</a>
+        {% endif %}
+      </nav>
+    {% endif %}
+
+  {% else %}
+    <div class="empty-state">
+      <div class="empty-state__icon">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
+      </div>
+      <h3>No students found</h3>
+      <p>No student members matched your query{% if query %} "{{ query }}"{% endif %}.</p>
+      <div class="empty-state__action">
+        <a href="{% url 'accounts:student_list' %}" class="button button--secondary">Reset filters</a>
+      </div>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

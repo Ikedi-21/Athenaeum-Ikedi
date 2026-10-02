@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+
+{% comment %}
+  The loan desk: every copy the library currently has out.
+
+  Returned loans are deliberately absent. This is a working list, and a list
+  mixing live loans with years of settled history would bury the rows worth
+  acting on. The money a returned loan left behind has its own page.
+
+  Two controls across the top, and they do different jobs. The tabs answer
+  "what needs chasing", which is the question asked when nobody is standing at
+  the desk. The search box answers "where is this one copy", which is the
+  question asked when somebody is. Both narrow the same list, so a search
+  inside the overdue tab searches inside the overdue tab.
+
+  Every button here posts to circulation/views.py rather than to a desk view,
+  because returning and renewing are the same two operations whoever presses
+  them. return_book and renew_loan already exempt a librarian from the
+  ownership check and already record whose name the audit entry carries, so a
+  second pair of views would be a second copy of the same rules.
+{% endcomment %}
+
+{% block page_title %}Loan desk{% endblock %}
+
+{% block content %}
+  <header class="page-head">
+    <h1>Loan desk</h1>
+    <p class="lede">
+      {% comment %}
+        Both figures come from one aggregate in the view and describe the
+        whole library rather than this page, which is the point: a desk that
+        reported four overdue books only while the overdue tab was open would
+        be no use for noticing them.
+      {% endcomment %}
+      {{ total_out }} book{{ total_out|pluralize }} on loan,
+      {{ total_overdue }} overdue.
+    </p>
+
+    <p class="page-head__tools">
+      <a href="{% url 'circulation:fines' %}">Fines</a>
+      <a href="{% url 'catalog:book_manage' %}">Manage the catalogue</a>
+    </p>
+  </header>
+
+  {% comment %}
+    The tabs are links and not a dropdown, because there are three of them
+    and a librarian switches between them all day. A link is one click where
+    a select is three, and it gives each state an address that can be
+    bookmarked or left open in a tab.
+
+    querystring is what makes them safe to combine with the search box. It
+    rebuilds the current query string with state swapped and everything else
+    left alone, so switching tabs keeps whatever was typed. Writing
+    href="?state=overdue" by hand, which is the obvious thing to write,
+    would silently throw the search away.
+
+    page=None removes the page parameter rather than replacing it. Without
+    that, somebody on page four of everything on loan would land on page four
+    of the overdue list, which may well not exist and is certainly not what
+    they asked for.
+  {% endcomment %}
+  <nav class="tabs" aria-label="Filter loans by state">
+    {% for option in states %}
+      {% comment %}
+        aria-current tells a screen reader which tab is the one in force,
+        which a colour change alone does not. The class is what carries the
+        colour change for everybody else.
+      {% endcomment %}
+      <a class="tabs__tab {% if option.selected %}is-current{% endif %}"
+         href="{% querystring state=option.key page=None %}"
+         {% if option.selected %}aria-current="page"{% endif %}>
+        {{ option.label }}
+      </a>
+    {% endfor %}
+  </nav>
+
+  {% comment %}
+    A form of its own rather than the shared book_filters include, because
+    this searches loans and not books: the same box has to find a member by
+    name as well as a book by title, and the include knows nothing about
+    members.
+
+    No action attribute, so it submits to this page. method="get", so the
+    result has an address and the pagination links can carry the search.
+
+    The state is carried in a hidden field. Without it, typing in the search
+    box while the overdue tab is open would submit a form containing only q
+    and drop the reader back to everything on loan.
+  {% endcomment %}
+  <form class="filters" method="get" role="search">
+    <input type="hidden" name="state" value="{{ state }}">
+
+    <div class="filters__row">
+      <div class="field field--search">
+        <label class="field__label" for="desk-q">Search</label>
+        <input type="search" id="desk-q" name="q" value="{{ search_term }}"
+               placeholder="Book, or the person who has it"
+               autocomplete="off">
+      </div>
+
+      <div class="field field--action">
+        <button type="submit" class="button">Search</button>
+      </div>
+    </div>
+
+    {% if search_term %}
+      <p class="filters__reset">
+        {# Keeps the tab and clears only the search, which is the narrower of the two resets and the more useful. #}
+        <a href="{% querystring q=None page=None %}">Clear the search</a>
+      </p>
+    {% endif %}
+  </form>
+
+
+  <p class="result-count" role="status">
+    {% comment %}
+      role="status" is what makes a screen reader announce the new count
+      after a search without moving the reader's place on the page. The count
+      is of the filtered list here, unlike the two figures in the heading,
+      because this line is describing the table directly underneath it.
+    {% endcomment %}
+    {{ paginator.count }} loan{{ paginator.count|pluralize }} shown
+  </p>
+
+  <table class="data-table">
+    <caption class="data-table__caption">
+      Loans currently out, soonest due first
+    </caption>
+    <thead>
+      <tr>
+        <th scope="col">Title</th>
+        <th scope="col">Who has it</th>
+        <th scope="col">Due back</th>
+        <th scope="col">State</th>
+        <th scope="col">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for loan in loans %}
+        <tr class="{% if loan.is_overdue %}is-overdue{% endif %}">
+          <th scope="row">
+            <a href="{{ loan.book.get_absolute_url }}">{{ loan.book.title }}</a>
+          </th>
+          <td>
+            {% comment %}
+              The full name where there is one, falling back to the username.
+              default is the right filter for that and default_if_none is
+              not: get_full_name returns an empty string rather than None
+              when both name fields are blank, and only default treats an
+              empty string as missing.
+
+              The username is printed underneath either way, because it is
+              what is on the library card and two members can share a name.
+            {% endcomment %}
+            {{ loan.student.get_full_name|default:loan.student.username }}
+            <span class="data-table__sub">{{ loan.student.username }}</span>
+          </td>
+          <td>{{ loan.due_date|date:"j F Y" }}</td>
+          <td>
+            {% if loan.is_overdue %}
+              <span class="status status--out">
+                {{ loan.days_overdue }} day{{ loan.days_overdue|pluralize }} late
+              </span>
+            {% else %}
+              <span class="status status--available">On loan</span>
+            {% endif %}
+
+            {% comment %}
+              Shown only when a renewal has been used, since the ordinary
+              case is nothing to report. This is the figure that explains a
+              refused renewal, so having it on the row saves reading the
+              message to find out why.
+            {% endcomment %}
+            {% if loan.renewal_count %}
+              <span class="data-table__sub">
+                renewed {{ loan.renewal_count }} time{{ loan.renewal_count|pluralize }}
+              </span>
+            {% endif %}
+          </td>
+          <td class="data-table__actions">
+            {% comment %}
+              Both buttons are offered on every row, including rows where
+              renewing will be refused. Three rules can refuse a renewal, and
+              all three live in services.py; a template that tried to predict
+              them would be a fourth statement of the same rules and the
+              first one to fall out of step. The refusal explains itself.
+            {% endcomment %}
+            <form method="post"
+                  action="{% url 'circulation:renew' loan.pk %}">
+              {% csrf_token %}
+              <input type="hidden" name="next"
+                     value="{{ request.get_full_path }}">
+              <button type="submit" class="button button--small button--quiet">
+                Renew
+              </button>
+            </form>
+
+            <form method="post"
+                  action="{% url 'circulation:return' loan.pk %}">
+              {% csrf_token %}
+              <input type="hidden" name="next"
+                     value="{{ request.get_full_path }}">
+              <button type="submit" class="button button--small">
+                Take it back
+              </button>
+            </form>
+          </td>
+        </tr>
+      {% empty %}
+        <tr>
+          <td colspan="5" class="empty-state">
+            {% if search_term %}
+              <p>Nothing on loan matches that.</p>
+              <p><a href="{% querystring q=None page=None %}">Clear the search</a>.</p>
+            {% else %}
+              <p>Nothing is out under that filter.</p>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% include "includes/pagination.html" with pagination_label="Loan desk pages" %}
+
+  <p class="panel__footnote">
+    Returning a book late charges {{ fine_per_day|floatformat:2 }} naira for
+    every day it was out past its date, and the charge is worked out at the
+    moment it comes back.
+  </p>
+
+
+{% endblock %}
