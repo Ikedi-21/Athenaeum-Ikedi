@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block page_title %}Terms of Service{% endblock %}
+{% block page_description %}Terms of Service and Circulation Regulations for Athenaeum Ikedi.{% endblock %}
+
+{% block content %}
+<div class="legal-page container">
+  <div class="page-head">
+    <div class="breadcrumb">
+      <a href="{% url 'home' %}">Home</a>
+      <span class="breadcrumb__sep">/</span>
+      <span>Legal & Governance</span>
+      <span class="breadcrumb__sep">/</span>
+      <span>Terms of Service</span>
+    </div>
+    <h1>Terms of Service & Borrowing Regulations</h1>
+    <p class="lede">Policies governing collection circulation, patron rights, and system fair use.</p>
+    <p class="text-small text-muted">Effective Date: September 2026 &bull; Version 2.4 Enterprise</p>
+  </div>
+
+  <div class="legal-content">
+    <section class="panel">
+      <h2>1. Member Eligibility & Account Security</h2>
+      <p>Access to Athenaeum Ikedi is granted to authorized students, faculty members, and administrative staff. Each patron is responsible for maintaining the confidentiality of their credentials and all borrowing activities transacted under their account.</p>
+    </section>
+
+    <section class="panel">
+      <h2>2. Circulation & Loan Quotas</h2>
+      <p>Patrons must adhere to active institutional borrowing quotas:</p>
+      <ul>
+        <li><strong>Simultaneous Loan Ceiling:</strong> Student members may hold up to a maximum of 3 concurrent loans unless granted an institutional waiver.</li>
+        <li><strong>Standard Loan Period:</strong> Titles are checked out for a duration of 14 calendar days, subject to up to 2 renewals if no holds are pending.</li>
+        <li><strong>Fair Use Holds:</strong> Waitlist reservations must be claimed within 3 business days of notification.</li>
+      </ul>
+    </section>
+
+    <section class="panel">
+      <h2>3. Overdue Penalties & Replacement Levies</h2>
+      <p>Titles not renewed or returned by the designated due date accrue a statutory late fee (₦50.00 per calendar day). Members with unpaid fine balances exceeding ₦1,000 may have checkout privileges temporarily restricted until the account is settled at the circulation desk.</p>
+    </section>
+
+    <section class="panel">
+      <h2>4. Administrative Powers & System Audit</h2>
+      <p>Librarians retain authority to recall high-demand collection materials, adjust classification data, withdraw degraded copies, and audit transaction logs to ensure equitable resource distribution.</p>
+    </section>
+  </div>
+</div>
+{% endblock %}

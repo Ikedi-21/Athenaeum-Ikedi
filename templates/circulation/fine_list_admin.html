@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+
+{% comment %}
+  Every fine the library has charged.
+
+  A fine has no table of its own. It is frozen onto the loan that produced it
+  at the moment the book comes back, which is why this is a list of returned
+  loans with an amount above zero rather than a list of some separate model.
+  Nothing here is a fine record that can drift away from the loan it came
+  from, because there is no such record.
+
+  A settled fine keeps its amount rather than being zeroed, so this page can
+  answer both "what is still owed" and "what have we charged this term". The
+  tabs across the top choose between those two readings, and the list opens on
+  what is owed, because that is what somebody visiting came to act on.
+
+  Marking a fine settled is the one action on this page, and it is the only
+  desk action with no student equivalent: a member cannot record their own
+  payment, which is the point of doing it at the desk.
+{% endcomment %}
+
+{% block page_title %}Fines{% endblock %}
+
+{% block content %}
+  <header class="page-head">
+    <h1>Fines</h1>
+    <p class="lede">
+      {% comment %}
+        Both figures describe every unsettled fine in the library rather than
+        the page being looked at. A balance worked out from one page would
+        read differently on page two, and a total that changes as you turn the
+        page is worse than no total at all.
+      {% endcomment %}
+      {{ total_owed|floatformat:2 }} naira outstanding across
+      {{ total_owing_rows }} fine{{ total_owing_rows|pluralize }}.
+    </p>
+
+    <p class="page-head__tools">
+      <a href="{% url 'circulation:desk' %}">Loan desk</a>
+      <a href="{% url 'catalog:book_manage' %}">Manage the catalogue</a>
+    </p>
+  </header>
+
+  {% comment %}
+    The same tab and search pair as the loan desk, so a librarian who has
+    learned one page has learned this one. The two are written out separately
+    rather than shared as an include, because the filters differ: this one
+    chooses between owed and settled, and that one chooses between overdue and
+    due soon. An include covering both would need a parameter for every
+    difference, which is more machinery than two short forms.
+  {% endcomment %}
+  <nav class="tabs" aria-label="Filter fines by state">
+    {% for option in states %}
+      <a class="tabs__tab {% if option.selected %}is-current{% endif %}"
+         href="{% querystring state=option.key page=None %}"
+         {% if option.selected %}aria-current="page"{% endif %}>
+        {{ option.label }}
+      </a>
+    {% endfor %}
+  </nav>
+
+  <form class="filters" method="get" role="search">
+    {# Carried in a hidden field so that searching inside a tab stays in that tab. #}
+    <input type="hidden" name="state" value="{{ state }}">
+
+    <div class="filters__row">
+      <div class="field field--search">
+        <label class="field__label" for="fines-q">Search</label>
+        <input type="search" id="fines-q" name="q" value="{{ search_term }}"
+               placeholder="Who owes it, or which book"
+               autocomplete="off">
+      </div>
+
+      <div class="field field--action">
+        <button type="submit" class="button">Search</button>
+      </div>
+    </div>
+
+    {% if search_term %}
+      <p class="filters__reset">
+        <a href="{% querystring q=None page=None %}">Clear the search</a>
+      </p>
+    {% endif %}
+  </form>
+
+
+  <p class="result-count" role="status">
+    {{ paginator.count }} fine{{ paginator.count|pluralize }} shown
+  </p>
+
+  <table class="data-table">
+    <caption class="data-table__caption">
+      Fines charged, most recently returned first
+    </caption>
+    <thead>
+      <tr>
+        <th scope="col">Who owes it</th>
+        <th scope="col">Title</th>
+        <th scope="col">Came back</th>
+        <th scope="col">Amount</th>
+        <th scope="col">State</th>
+        <th scope="col">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for fine in fines %}
+        <tr class="{% if not fine.fine_paid %}is-overdue{% endif %}">
+          {% comment %}
+            The person is the row heading here, not the book. On the loan desk
+            the book identifies the row, because the question there is where a
+            copy is; the question on this page is who owes money, so the name
+            is what a reader is scanning down the column for.
+          {% endcomment %}
+          <th scope="row">
+            {{ fine.student.get_full_name|default:fine.student.username }}
+            <span class="data-table__sub">{{ fine.student.username }}</span>
+          </th>
+          <td>
+            <a href="{{ fine.book.get_absolute_url }}">{{ fine.book.title }}</a>
+          </td>
+          <td>
+            {% comment %}
+              The date it came back rather than the date it was due, because
+              this list is ordered by it and a column that explains the
+              ordering is worth more than one that repeats the loan.
+            {% endcomment %}
+            {{ fine.returned_date|date:"j F Y" }}
+            <span class="data-table__sub">
+              was due {{ fine.due_date|date:"j F Y" }}
+            </span>
+          </td>
+          <td>{{ fine.fine_amount|floatformat:2 }} naira</td>
+          <td>
+            {% if fine.fine_paid %}
+              <span class="status status--available">Settled</span>
+            {% else %}
+              <span class="status status--out">Owed</span>
+            {% endif %}
+          </td>
+          <td class="data-table__actions">
+            {% comment %}
+              The button appears only on a fine that is still owed. Pressing
+              it on a settled one is refused by mark_fine_paid with
+              FineAlreadyPaid rather than recording a payment twice, so this
+              is a courtesy rather than the guard: the guard is in
+              services.py, where the row can be seen and locked.
+
+              A form and not a link, because it records money changing hands.
+              MarkFinePaidView defines no get method, so a GET is answered
+              with 405 and no crawler can settle a fine by reading this page.
+            {% endcomment %}
+            {% if not fine.fine_paid %}
+              <form method="post"
+                    action="{% url 'circulation:fine_paid' fine.pk %}">
+                {% csrf_token %}
+                <input type="hidden" name="next"
+                       value="{{ request.get_full_path }}">
+                <button type="submit" class="button button--small">
+                  Mark settled
+                </button>
+              </form>
+            {% endif %}
+          </td>
+        </tr>
+      {% empty %}
+        <tr>
+          <td colspan="6" class="empty-state">
+            {% if search_term %}
+              <p>No fine matches that.</p>
+              <p><a href="{% querystring q=None page=None %}">Clear the search</a>.</p>
+            {% else %}
+              <p>Nothing to show under that filter.</p>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% include "includes/pagination.html" with pagination_label="Fine pages" %}
+
+  <p class="panel__footnote">
+    A late book is charged {{ fine_per_day|floatformat:2 }} naira for every day
+    it was out past its date. A settled fine keeps its amount rather than being
+    zeroed, which is what lets this page show what has been charged as well as
+    what is still owed.
+  </p>
+
+
+{% endblock %}

@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% comment %}
+  Every book this member has borrowed and given back.
+
+  Two lists again, and for a reason worth stating: the money owed is not a
+  column of the history table below it. A fine sits on the loan that produced
+  it, and this table is paginated, so a fine charged eleven loans ago would be
+  on page two while the balance is on page one. The panel at the top therefore
+  lists what is owed in full, and the table underneath is history for its own
+  sake.
+
+  Nothing on this page changes anything. There are no forms and no buttons,
+  because a returned loan is finished and a fine is settled at the desk with a
+  librarian, not from here. That is also why the fines panel links nowhere.
+{% endcomment %}
+
+{% block page_title %}Borrowing history{% endblock %}
+
+{% block content %}
+  <header class="page-head">
+    <h1>Borrowing history</h1>
+    <p class="lede">
+      Books you have borrowed and returned, most recent first.
+    </p>
+
+    <p class="page-head__tools">
+      <a href="{% url 'circulation:loans' %}">Back to my loans</a>
+      <a href="{% url 'catalog:book_list' %}">Find another book</a>
+    </p>
+  </header>
+
+  {% comment %}
+    Shown only when something is owed, so the page carries no panel reading
+    zero naira. A Decimal of 0.00 is falsy in Python, so the plain if is
+    enough here and no comparison is needed.
+
+    The rows are every unpaid fine, not just the ones on this page of
+    history, which is what makes the total at the top add up to the rows
+    beneath it.
+  {% endcomment %}
+  {% if fine_total %}
+    <aside class="panel panel--warning">
+      <h2 class="panel__title">You owe {{ fine_total|floatformat:2 }} naira</h2>
+      <p>
+        Fines are {{ fine_per_day|floatformat:2 }} naira for every day a book
+        is late, and are paid at the desk.
+      </p>
+
+      <ul class="fine-list">
+        {% for fine in fines %}
+          <li class="fine-list__item">
+            <a href="{{ fine.book.get_absolute_url }}">{{ fine.book.title }}</a>
+            <span class="fine-list__amount">
+              {{ fine.fine_amount|floatformat:2 }} naira
+            </span>
+            <span class="fine-list__note">
+              {% comment %}
+                days_overdue returns zero once a book is back, so it cannot
+                be used here. The two dates are printed instead and the
+                arithmetic is left to the reader, which is also more use to
+                somebody querying a charge: it says which loan it came from.
+              {% endcomment %}
+              due {{ fine.due_date|date:"j F Y" }},
+              returned {{ fine.returned_date|date:"j F Y" }}
+            </span>
+          </li>
+        {% endfor %}
+      </ul>
+    </aside>
+  {% endif %}
+
+
+  {% comment %}
+    Labelled with aria-label rather than aria-labelledby, because the only
+    heading this section could point at would repeat the page title directly
+    above it. A visible heading saying "Returned loans" under a heading
+    saying "Borrowing history" is a heading that earns nothing, and hiding
+    one with CSS to satisfy a landmark is worse: it puts text on the page
+    that only some readers get.
+  {% endcomment %}
+  <section class="loan-section" aria-label="Returned loans">
+
+    {% comment %}
+      paginator.count is the whole history and not the ten rows on this page,
+      which is the number somebody actually wants when they ask how much they
+      have read. It is available whether or not the list paginates.
+    {% endcomment %}
+    <p class="result-count">
+      {{ paginator.count }} book{{ paginator.count|pluralize }} returned.
+    </p>
+
+    <table class="data-table">
+      <caption class="data-table__caption">
+        Your returned loans, most recent first
+      </caption>
+      <thead>
+        <tr>
+          <th scope="col">Title</th>
+          <th scope="col">Borrowed</th>
+          <th scope="col">Due back</th>
+          <th scope="col">Returned</th>
+          <th scope="col">Fine</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for loan in loans %}
+          <tr>
+            <th scope="row">
+              <a href="{{ loan.book.get_absolute_url }}">{{ loan.book.title }}</a>
+            </th>
+            {% comment %}
+              borrowed_date and returned_date are datetimes and due_date is a
+              date, which is deliberate in the model: a loan runs in whole
+              days, so the day it is due is the whole of that day. All three
+              are printed as dates here so the three columns line up and
+              nobody reads a time as significant.
+            {% endcomment %}
+            <td>{{ loan.borrowed_date|date:"j F Y" }}</td>
+            <td>{{ loan.due_date|date:"j F Y" }}</td>
+            <td>{{ loan.returned_date|date:"j F Y" }}</td>
+            <td>
+              {% comment %}
+                A fine of zero is the ordinary case, so it says none rather
+                than printing 0.00 naira. The word rather than a dash,
+                because a dash is read aloud as nothing at all by some
+                screen readers and as "minus" by others.
+              {% endcomment %}
+              {% if loan.fine_amount %}
+                {{ loan.fine_amount|floatformat:2 }} naira
+                {% if loan.fine_paid %}
+                  <span class="status status--available">settled</span>
+                {% else %}
+                  <span class="status status--out">owed</span>
+                {% endif %}
+              {% else %}
+                <span class="data-table__nil">None</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="5" class="empty-state">
+              <p>You have not returned anything yet.</p>
+              <p>
+                Books you have out now are on
+                <a href="{% url 'circulation:loans' %}">your loans page</a>.
+              </p>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {% include "includes/pagination.html" with pagination_label="History pages" %}
+  </section>
+
+
+{% endblock %}

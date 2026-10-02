@@ -1,0 +1,39 @@
+{% comment %}
+  Previous and next links for any paginated list.
+
+  Reads is_paginated, page_obj and paginator, all three of which ListView
+  puts in the context, so nothing needs passing in. A caller may set
+  pagination_label to name the region, which matters when a page holds more
+  than one navigation landmark:
+
+    {% include "includes/pagination.html" with pagination_label="Catalogue pages" %}
+
+  The whole control disappears when everything fitted on one page, which is
+  what is_paginated is for, rather than showing a lone "Page 1 of 1".
+
+  The querystring tag is what makes this reusable. It rebuilds the current
+  query string with page swapped for the new number and everything else left
+  alone, so a reader who has searched for one thing and sorted by another
+  keeps both when they turn the page. Writing href="?page=2" by hand, which
+  is the obvious thing to write, silently drops the search and the sort and
+  is the commonest bug in a filtered list. The tag is built into Django from
+  version 5.1 onward, so no custom tag is needed for it.
+{% endcomment %}
+{% if is_paginated %}
+  <nav class="pagination" aria-label="{{ pagination_label|default:'Pages' }}">
+    {% if page_obj.has_previous %}
+      {# rel tells a browser and a crawler how these pages relate, which is what lets a browser prefetch the next one sensibly. #}
+      <a class="pagination__step" rel="prev"
+         href="{% querystring page=page_obj.previous_page_number %}">Previous</a>
+    {% endif %}
+
+    <span class="pagination__count">
+      Page {{ page_obj.number }} of {{ paginator.num_pages }}
+    </span>
+
+    {% if page_obj.has_next %}
+      <a class="pagination__step" rel="next"
+         href="{% querystring page=page_obj.next_page_number %}">Next</a>
+    {% endif %}
+  </nav>
+{% endif %}
