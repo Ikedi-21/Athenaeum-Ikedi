@@ -1,13 +1,43 @@
-argon2-cffi==25.1.0
-argon2-cffi-bindings==26.1.0
-asgiref==3.12.1
-cffi==2.1.1
-charset-normalizer==3.5.1
+# ============================================================
+# Athenaeum Ikedi – Python Dependencies
+# ============================================================
+# Production requirements. Railway installs this file.
+# Update with:  pip freeze > requirements.txt  (inside .venv)
+# ============================================================
+
+# Django core
 Django==6.1.1
-django-ratelimit==4.1.0
-pillow==12.3.0
-pycparser==3.0
-python-decouple==3.8
-reportlab==5.0.1
+asgiref==3.12.1
 sqlparse==0.6.0
 tzdata==2026.3
+
+# WSGI server (used in Procfile)
+gunicorn==26.2.0
+
+# Static file serving (WhiteNoise handles /static/ without a CDN)
+whitenoise==6.12.0
+
+# Database helpers
+dj-database-url==3.1.2          # Parses DATABASE_URL env var → DATABASES dict
+psycopg2-binary==2.9.13         # PostgreSQL driver for Railway Postgres plugin
+
+# Environment variable loading
+python-decouple==3.8
+
+# Password hashing (Argon2 is the primary hasher in settings.py)
+argon2-cffi==25.1.0
+argon2-cffi-bindings==26.1.0
+cffi==2.1.1
+pycparser==3.0
+
+# Image handling (book covers)
+pillow==12.3.0
+
+# PDF generation (overdue notices / reports)
+reportlab==5.0.1
+
+# Rate limiting middleware
+django-ratelimit==4.1.0
+
+# Misc
+charset-normalizer==3.5.1
