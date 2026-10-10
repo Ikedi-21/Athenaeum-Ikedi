@@ -195,10 +195,6 @@ if DEBUG:
     SILENCED_SYSTEM_CHECKS = [
         "django_ratelimit.E003",
         "django_ratelimit.W001",
-        # Console email backend is intentional in local development.
-        # On Railway set DEBUG=False and supply EMAIL_BACKEND=smtp to
-        # send real mail; this check will then enforce it automatically.
-        "mail.E001",
     ]
 
 
