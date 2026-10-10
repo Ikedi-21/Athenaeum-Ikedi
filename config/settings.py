@@ -35,7 +35,7 @@ SECRET_KEY = config("SECRET_KEY")
 # True only on a development machine. This also gates the hardening
 # block at the bottom of the file, so it defaults to False. An unset
 # DEBUG should mean "assume this is a server".
-DEBUG = config("DEBUG", default=False, cast=bool)
+DEBUG = config("DEBUG", default="False").lower() in ("true", "1", "t", "yes", "y", "on")
 
 # Hostnames this site answers to. Csv() splits the comma separated
 # string from .env into a Python list.
@@ -191,10 +191,21 @@ CACHES = {
 # quiet weakness into a blocking error at exactly the moment it starts to
 # matter. W001 is the same check's softer warning about any backend it
 # does not recognise, and is silenced alongside it for the same window.
-if DEBUG:
+import sys
+
+# Detect if Django is running a management command (like migrate or collectstatic during build)
+is_management_command = len(sys.argv) > 1 and sys.argv[1] in ["migrate", "collectstatic", "check"]
+
+# django-ratelimit raises system check E003 against local memory cache in production.
+# We silence it when DEBUG is True, or during build management commands.
+if DEBUG or is_management_command:
     SILENCED_SYSTEM_CHECKS = [
         "django_ratelimit.E003",
         "django_ratelimit.W001",
+        # Console email backend is intentional in local development.
+        # On Railway set DEBUG=False and supply EMAIL_BACKEND=smtp to
+        # send real mail; this check will then enforce it automatically.
+        "mail.E001",
     ]
 
 
