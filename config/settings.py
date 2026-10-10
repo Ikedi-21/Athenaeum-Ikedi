@@ -195,6 +195,10 @@ if DEBUG:
     SILENCED_SYSTEM_CHECKS = [
         "django_ratelimit.E003",
         "django_ratelimit.W001",
+        # Console email backend is intentional in local development.
+        # On Railway set DEBUG=False and supply EMAIL_BACKEND=smtp to
+        # send real mail; this check will then enforce it automatically.
+        "mail.E001",
     ]
 
 
@@ -271,13 +275,29 @@ USE_TZ = True
 
 # Django 6.1 configures email through MAILERS rather than the older
 # EMAIL_BACKEND setting. The console backend prints messages to the
-# terminal instead of sending them, which is what makes the password
-# reset flow testable locally without an SMTP server.
+# terminal when EMAIL_BACKEND is not set (great for local dev). On
+# Railway set EMAIL_BACKEND to smtp and fill in the SMTP_* variables
+# with credentials from SendGrid, Mailgun, Brevo, etc.
 MAILERS = {
     "default": {
-        "BACKEND": "django.core.mail.backends.console.EmailBackend",
+        "BACKEND": config(
+            "EMAIL_BACKEND",
+            default="django.core.mail.backends.console.EmailBackend",
+        ),
+        "OPTIONS": {
+            "host": config("EMAIL_HOST", default="localhost"),
+            "port": config("EMAIL_PORT", default=587, cast=int),
+            "username": config("EMAIL_HOST_USER", default=""),
+            "password": config("EMAIL_HOST_PASSWORD", default=""),
+            "use_tls": config("EMAIL_USE_TLS", default=True, cast=bool),
+        },
     },
 }
+
+# Sender address shown in outgoing mail (e.g. password-reset links).
+DEFAULT_FROM_EMAIL = config(
+    "DEFAULT_FROM_EMAIL", default="noreply@athenaeum-ikedi.up.railway.app"
+)
 
 
 # =====================================================================
