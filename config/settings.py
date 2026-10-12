@@ -310,9 +310,10 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # Storage engines: WhiteNoise compresses static assets in production
 STORAGES = {
-    "default": {
-        "BACKEND": "django.core.files.storage.FileSystemStorage",
-    },
+   "default": {
+           "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
+       },
+       
     "staticfiles": {
         "BACKEND": (
             "whitenoise.storage.CompressedStaticFilesStorage"
@@ -394,3 +395,4 @@ if not DEBUG:
     # the internal hop and the redirect above would loop forever. This header
     # tells it the original request was https.
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    
