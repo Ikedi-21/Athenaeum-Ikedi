@@ -175,6 +175,8 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # Memcached, because local memory is per process and each worker would
 # otherwise keep its own separate count, multiplying every limit by the
 # number of workers.
+import sys
+
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
@@ -182,29 +184,14 @@ CACHES = {
     }
 }
 
-# django-ratelimit raises its own system check, E003, against any cache it
-# considers unsafe to count in, and local memory is on that list for the
-# reason given above. The check is correct, so it is not removed: it is
-# silenced only while DEBUG is True. On a server, where DEBUG is False,
-# the check fires again and manage.py check refuses to pass until the
-# cache above has been swapped for Redis or Memcached, which turns a
-# quiet weakness into a blocking error at exactly the moment it starts to
-# matter. W001 is the same check's softer warning about any backend it
-# does not recognise, and is silenced alongside it for the same window.
-import sys
-
-# Detect if Django is running a management command (like migrate or collectstatic during build)
+# Detect if Django is executing a build or migration command
 is_management_command = len(sys.argv) > 1 and sys.argv[1] in ["migrate", "collectstatic", "check"]
 
-# django-ratelimit raises system check E003 against local memory cache in production.
-# We silence it when DEBUG is True, or during build management commands.
+# Silence ratelimit cache checks during build and in production if needed
 if DEBUG or is_management_command:
     SILENCED_SYSTEM_CHECKS = [
         "django_ratelimit.E003",
         "django_ratelimit.W001",
-        # Console email backend is intentional in local development.
-        # On Railway set DEBUG=False and supply EMAIL_BACKEND=smtp to
-        # send real mail; this check will then enforce it automatically.
         "mail.E001",
     ]
 

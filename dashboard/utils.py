@@ -149,7 +149,7 @@ def get_librarian_dashboard_data():
     )
     for loan in overdue_loans:
         loan.overdue_days = rules.days_late(loan.due_date, today)
-        loan.estimated_fine = rules.fine_for(loan.due_date, today)
+        loan.calculated_fine = rules.fine_for(loan.due_date, today)
 
     due_soon_count = active_loans_qs.filter(
         due_date__gte=today,
