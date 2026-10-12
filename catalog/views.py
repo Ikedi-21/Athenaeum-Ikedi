@@ -61,7 +61,7 @@ class BookQueryMixin:
             .select_related("category")
             .annotate(
                 avg_rating=Avg("reviews__rating"),
-                review_count=Count("reviews", distinct=True),
+                review_count_db=Count("reviews", distinct=True),
                 borrow_count=Count("borrow_records", distinct=True),
             )
         )
