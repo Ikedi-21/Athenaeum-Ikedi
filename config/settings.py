@@ -16,6 +16,8 @@ from pathlib import Path
 import dj_database_url
 from decouple import Csv, config
 from django.utils.csp import CSP
+from dotenv import load_dotenv
+load_dotenv()
 
 # BASE_DIR is the folder holding manage.py. Every other path is built
 # from it, so the project behaves identically no matter which directory
@@ -65,6 +67,7 @@ INSTALLED_APPS = [
     "django_ratelimit",
     # Our four apps. accounts is first because it defines the user model
     # the other three depend on.
+    "cloudinary_storage",
     "accounts",
     "catalog",
     "circulation",
@@ -395,4 +398,10 @@ if not DEBUG:
     # the internal hop and the redirect above would loop forever. This header
     # tells it the original request was https.
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-    
+import os
+
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': os.environ['CLOUDINARY_CLOUD_NAME'],
+    'API_KEY': os.environ['CLOUDINARY_API_KEY'],
+    'API_SECRET': os.environ['CLOUDINARY_API_SECRET'],
+}
