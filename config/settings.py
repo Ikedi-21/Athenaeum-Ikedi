@@ -68,6 +68,7 @@ INSTALLED_APPS = [
     # Our four apps. accounts is first because it defines the user model
     # the other three depend on.
     "cloudinary_storage",
+    'cloudinary',
     "accounts",
     "catalog",
     "circulation",
